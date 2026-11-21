@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.0.0 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.2.0 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -22,7 +22,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.1.0';
+  const VERSION = '2.2.0';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -32,9 +32,6 @@
 
   // ================================================================== option schema
   // type: 'check' (0/1), 'choice' (index into labels), 'number', 'button'
-  const GODS = [['', 'No god'], ['decadence', 'Vomitrax'], ['ruin', 'Godzamok'], ['ages', 'Cyclius'], ['seasons', 'Selebrak'],
-    ['creation', 'Dotjeiess'], ['labor', 'Muridal'], ['industry', 'Jeremy'], ['mother', 'Mokalsium'], ['scorn', 'Skruuia'],
-    ['order', 'Rigidel'], ['asceticism', 'Holobore']];
   const AURAS = ['No aura', 'Breath of Milk', 'Dragon Cursor', 'Elder Battalion', 'Reaper of Fields', 'Earth Shatterer',
     'Master of the Armory', 'Fierce Hoarder', 'Dragon God', 'Arcane Aura', 'Dragonflight', 'Ancestral Metamorphosis',
     'Unholy Dominion', 'Epoch Manipulator', 'Mind Over Matter', 'Radiant Appetite', "Dragon's Fortune", "Dragon's Curve",
@@ -48,9 +45,7 @@
     { sec: 'Auto clicking', key: 'cookieClickSpeed', type: 'number', def: 40, min: 1, max: 50, label: 'Clicks per second (game caps scripted clicks at 50)' },
     { sec: 'Auto clicking', key: 'autoFrenzy', type: 'check', def: 0, label: 'Faster auto-click during click frenzies' },
     { sec: 'Auto clicking', key: 'frenzyClickSpeed', type: 'number', def: 50, min: 1, max: 50, label: 'Frenzy clicks per second' },
-    { sec: 'Auto clicking', key: 'muteClicks', type: 'check', def: 1, label: 'Mute auto-click sound' },
-    { sec: 'Auto clicking', key: 'autoGC', type: 'check', def: 1, label: 'Auto-click golden/wrath cookies' },
-    { sec: 'Auto clicking', key: 'gcSkipWrath', type: 'check', def: 0, label: '...but skip wrath cookies' },
+    { sec: 'Auto clicking', key: 'autoGC', type: 'check', def: 1, label: 'Auto-click golden/wrath cookies (skips known backfires)' },
     { sec: 'Auto clicking', key: 'autoReindeer', type: 'check', def: 1, label: 'Auto-click reindeer' },
     { sec: 'Auto clicking', key: 'autoFortune', type: 'check', def: 0, label: 'Auto-click fortunes in the news ticker' },
     // ---- Auto buying
@@ -83,20 +78,13 @@
     { sec: 'Other automation', key: 'autoLoan', type: 'choice', def: 0, label: 'Auto-take loans in click frenzies', labels: ['Off', 'Loans 1 and 2', 'All 3 loans'] },
     { sec: 'Other automation', key: 'minLoanMult', type: 'number', def: 777, min: 0, max: 1e300, label: 'Minimum frenzy for loans' },
     // ---- Pantheon
-    { sec: 'Pantheon', key: 'autoWorshipToggle', type: 'check', def: 0, label: 'Auto-slot gods' },
-    { sec: 'Pantheon', key: 'autoWorship0', type: 'choice', def: 0, label: 'Diamond slot', labels: GODS.map((g) => g[1]) },
-    { sec: 'Pantheon', key: 'autoWorship1', type: 'choice', def: 0, label: 'Ruby slot', labels: GODS.map((g) => g[1]) },
-    { sec: 'Pantheon', key: 'autoWorship2', type: 'choice', def: 0, label: 'Jade slot', labels: GODS.map((g) => g[1]) },
-    { sec: 'Pantheon', key: 'autoCyclius', type: 'choice', def: 0, label: 'Auto-Cyclius', labels: ['Off', 'Ruby and jade', 'All slots'] },
+    { sec: 'Pantheon', key: 'autoWorshipToggle', type: 'check', def: 0, label: 'Auto Pantheon (picks the best gods)' },
     // ---- Grimoire
     { sec: 'Grimoire', key: 'towerLimit', type: 'check', def: 0, label: 'Stop buying wizard towers at max mana' },
     { sec: 'Grimoire', key: 'manaMax', type: 'number', def: 37, min: 0, max: 1000, label: 'Max mana' },
-    { sec: 'Grimoire', key: 'autoCasting', type: 'choice', def: 0, label: 'Auto-cast at full mana', labels: ['Off', 'Conjure Baked Goods', 'Hand of Fate (simple)', 'Hand of Fate (smart)', 'Hand of Fate (click & building specials only)', 'Spontaneous Edifice', "Haggler's Charm"] },
-    { sec: 'Grimoire', key: 'autoFTHOFCombo', type: 'check', def: 0, label: 'Double-cast Hand of Fate combo' },
-    { sec: 'Grimoire', key: 'auto100ConsistencyCombo', type: 'check', def: 0, label: 'EXPERIMENTAL: 100% consistency combo' },
-    { sec: 'Grimoire', key: 'autoSugarFrenzy', type: 'choice', def: 0, label: 'Auto Sugar Frenzy', labels: ['Off', 'For 100% combo', 'Also for double-cast'] },
+    { sec: 'Grimoire', key: 'autoCasting', type: 'check', def: 0, label: 'Smart Grimoire (decides each Hand of Fate cast)' },
+    { sec: 'Grimoire', key: 'autoSugarFrenzy', type: 'check', def: 0, label: 'Auto Sugar Frenzy during double-cast combos' },
     { sec: 'Grimoire', key: 'minASFMult', type: 'number', def: 7777, min: 0, max: 1e300, label: 'Minimum frenzy for Sugar Frenzy' },
-    { sec: 'Grimoire', key: 'autoSweet', type: 'check', def: 0, label: "EXPERIMENTAL: re-ascend until a free-lump 'Sweet' cast" },
     // ---- Dragon
     { sec: 'Dragon', key: 'autoDragon', type: 'check', def: 0, label: 'Auto-upgrade dragon' },
     { sec: 'Dragon', key: 'petDragon', type: 'check', def: 0, label: 'Pet dragon until all drops unlocked' },
@@ -154,8 +142,8 @@
     autoBuy: 1, otherUpgrades: 1, autoBlacklistOff: 0, blacklist: 0, mineLimit: 1, mineMax: 500, factoryLimit: 1, factoryMax: 500, pastemode: 0,
     autoAscendToggle: 0, autoAscend: 2, comboAscend: 0, HCAscendAmount: 0, autoBulk: 2, autoBuyAll: 1, autoWrinkler: 1, shinyPop: 0,
     autoSL: 2, dragonsCurve: 2, sugarBakingGuard: 1, autoGS: 1, autoGodzamok: 1, autoBank: 1, autoBroker: 1, autoLoan: 1, minLoanMult: 777,
-    autoWorshipToggle: 1, autoWorship0: 2, autoWorship1: 8, autoWorship2: 6, autoCyclius: 0,
-    towerLimit: 1, manaMax: 37, autoCasting: 3, minCpSMult: 7, autoFTHOFCombo: 0, auto100ConsistencyCombo: 0, autoSugarFrenzy: 0, minASFMult: 7777, autoSweet: 0,
+    autoWorshipToggle: 1,
+    towerLimit: 1, manaMax: 37, autoCasting: 1, minCpSMult: 7, autoSugarFrenzy: 0, minASFMult: 7777,
     autoDragon: 1, petDragon: 1, autoDragonToggle: 1, autoDragonAura0: 3, autoDragonAura1: 15, autoDragonOrbs: 0, orbLimit: 0, orbMax: 200,
     defaultSeasonToggle: 1, defaultSeason: 1, freeSeason: 1, autoEaster: 1, autoHalloween: 1,
     holdManBank: 0, manBankMins: 0, holdSEBank: 0, setHarvestBankPlant: 0, setHarvestBankType: 3, maxSpecials: 1,
@@ -172,6 +160,9 @@
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch (e) { saved = {}; }
     const s = Object.assign(defaults(), saved.settings || {});
+    if (s.autoCasting > 1) s.autoCasting = 1;                     // v2.0 had six cast modes; now one smart mode
+    if (s.autoSugarFrenzy > 1) s.autoSugarFrenzy = 1;
+    for (const k in s) if (!(k in OPT)) delete s[k];              // drop options that no longer exist
     const data = Object.assign({
       frenzyTimes: {}, lastHCAmount: 0, lastHCTime: Date.now(), prevLastHCTime: Date.now(), maxHCPercent: 0,
       trades: {}, tradeProfit: 0, trackedStats: []
@@ -192,14 +183,10 @@
   }
 
   // ================================================================== logging & formatting
-  const panelLog = [];
   function logEvent(event, text, popup) {
     const secs = Math.floor((Date.now() - Game.startDate) / 1000);
     const line = '[' + (secs > 0 ? timeDisplay(secs) : '0s') + '] ' + event + ': ' + text;
     if (S.logging) console.log('[Sleepy Cookies] ' + line);
-    const d = new Date();
-    panelLog.unshift(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + event + ': ' + text);
-    if (panelLog.length > 12) panelLog.length = 12;
     if (popup) Game.Popup(text);
   }
   const reported = {};
@@ -344,12 +331,16 @@
     }
     return out;
   }
+  // Spawn window straight from the game's own timer code, so every modifier counts (Heavenly luck,
+  // Arcane Aura, Mokalsium/Jeremy, seasons...). FC used a fixed 3-upgrade approximation built once at load.
   function probList(type) {
-    let mod;
-    if (type === 'golden') mod = (Game.Has('Lucky day') ? 0.5 : 1) * (Game.Has('Serendipity') ? 0.5 : 1) * (Game.Has('Golden goose egg') ? 0.95 : 1);
-    else mod = Game.Has('Reindeer baking grounds') ? 0.5 : 1;
-    const key = type + mod + '@' + Game.fps;          // FC built these once at load; rebuilt here when fps changes
-    if (!W.probCache[key]) W.probCache[key] = type === 'golden' ? generateProbabilities(mod, 5 * 60 * Game.fps, 3) : generateProbabilities(mod, 3 * 60 * Game.fps, 2);
+    const st = Game.shimmerTypes[type];
+    const minT = st.getMinTime({ wrath: 0 }), maxT = st.getMaxTime({ wrath: 0 });
+    const key = type + minT + '-' + maxT;
+    if (!W.probCache[key]) {
+      if (Object.keys(W.probCache).length > 40) W.probCache = {};
+      W.probCache[key] = generateProbabilities(1, minT, maxT / minT);
+    }
     return W.probCache[key];
   }
   function sortedIndex(arr, v) {
@@ -374,7 +365,9 @@
     const cps = baseCps();
     const clickCps = baseClickingCps(clickSpeed());
     const frenzyCps = S.autoFrenzy ? baseClickingCps(Math.min(50, S.frenzyClickSpeed)) : clickCps;
-    const luckyMod = Game.Has('Get lucky') ? 2 : 1;
+    // Buff length multiplier: FC only counted Get lucky; the game also applies Lasting fortune, lucky
+    // digits, Green yeast, Epoch Manipulator and Vomitrax, so use the full factor.
+    const luckyMod = buffTimeFactor();
     wrath = wrath != null ? wrath : Game.elderWrath;
     wrinklerCount = wrinklerCount != null ? wrinklerCount : defaultWrinklers(wrath);
     const wr = wrinklerMod(wrinklerCount);
@@ -502,7 +495,7 @@
     return r;
   }
   function bestBank(minEfficiency) {
-    const edifice = S.autoCasting === 5 || S.holdSEBank ? edificeBank() : 0;
+    const edifice = S.holdSEBank ? edificeBank() : 0;
     const harvest = S.setHarvestBankPlant ? harvestBank() : 0;
     const manual = S.holdManBank ? manualBank() : 0;
     const override = Math.max(edifice, harvest, manual);
@@ -656,7 +649,6 @@
     if (bl.buildings === true) return [];
     const blocked = new Set(bl.buildings);
     const M = grimoire();
-    if (M && S.autoCasting === 5 && Game.Objects.You.amount >= 399) blocked.add(19);
     if (M && S.towerLimit && M.magicM >= S.manaMax) blocked.add(7);
     if (S.mineLimit && Game.Objects.Mine.amount >= S.mineMax) blocked.add(3);
     if (S.factoryLimit && Game.Objects.Factory.amount >= S.factoryMax) blocked.add(4);
@@ -814,11 +806,9 @@
   // ---- clicking
   function clickOnce() {
     if (Game.OnAscend || Game.AscendTimer || Game.specialTabHovered) return;
-    if (S.muteClicks) {
-      const orig = Game.playCookieClickSound;
-      Game.playCookieClickSound = noop;
-      try { Game.ClickCookie(); } finally { Game.playCookieClickSound = orig; }
-    } else Game.ClickCookie();
+    const orig = Game.playCookieClickSound;            // 50 click sounds a second is unbearable
+    Game.playCookieClickSound = noop;
+    try { Game.ClickCookie(); } finally { Game.playCookieClickSound = orig; }
   }
   const clickTick = safe('autoClick', clickOnce);
   function updateClickRate() {
@@ -1065,7 +1055,6 @@
     if (S.mineLimit && b.name === 'Mine') cap = S.mineMax - b.amount;
     if (S.factoryLimit && b.name === 'Factory') cap = S.factoryMax - b.amount;
     if (S.autoDragonOrbs && S.orbLimit && b.name === 'You') cap = S.orbMax - b.amount;
-    if (S.autoCasting === 5 && b.name === 'You') cap = Math.min(cap, 399 - b.amount);
     if (M && S.towerLimit && b.name === 'Wizard tower' && M.magicM >= S.manaMax - 10) cap = 1;
     return Math.max(1, Math.min(n, cap));
   }
@@ -1144,11 +1133,25 @@
   }
 
   // ---- golden cookies & reindeer
+  // Golden cookies made by Hand of Fate carry their effect in sh.force, so a backfire (Clot, Ruin)
+  // is left to fade away instead of clicked. Natural golden cookies roll their effect at click time
+  // (unseeded), so they can't be known in advance and are always clicked, like FC.
+  const skippedGC = new WeakSet();
+  function goodForced(force) {
+    if (force === 'clot' || force === 'ruin cookies') return false;
+    if (force === 'cursed finger') return clickSpeed() > 0;   // CpS stops; only worth it while auto-clicking
+    return true;
+  }
   function shimmerAction() {
     for (const sh of Game.shimmers.slice()) {
       if (sh.popped || !(sh.life > 0)) continue;
-      if (sh.type === 'golden' && S.autoGC && !(S.gcSkipWrath && sh.wrath)) sh.pop();
-      else if (sh.type === 'reindeer' && S.autoReindeer) sh.pop();
+      if (sh.type === 'golden' && S.autoGC) {
+        if (sh.force && !goodForced(sh.force)) {
+          if (!skippedGC.has(sh)) { skippedGC.add(sh); logEvent('GC', 'Left a ' + sh.force + ' cookie alone (known backfire)'); }
+          continue;
+        }
+        sh.pop();
+      } else if (sh.type === 'reindeer' && S.autoReindeer) sh.pop();
     }
   }
   function autoFortuneAction() {
@@ -1241,57 +1244,92 @@
     invalidate();
     return true;
   }
-  function godIdFor(choice) {
-    const T = pantheon();
-    const key = (GODS[choice] || [''])[0];
-    return T && key && T.gods[key] ? T.gods[key].id : -1;
-  }
-  const SLOT_NAMES = ['DIAMOND', 'RUBY', 'JADE'];
-  function autoWorshipAction() {
-    const T = pantheon();
-    if (!T || !S.autoWorshipToggle || S.autoCyclius) return;
-    const want = [godIdFor(S.autoWorship0), godIdFor(S.autoWorship1), godIdFor(S.autoWorship2)];
-    for (let slot = 0; slot < 3; slot++) {
-      const id = want[slot];
-      if (id < 0 || T.slot[slot] === id || T.swaps < 1) continue;
-      if (want.indexOf(id) !== slot) { logEvent('autoWorship', "Can't worship the same god in two slots!"); continue; }
-      if (swapIn(id, slot)) logEvent('autoWorship', 'Slotted ' + T.godsById[id].name + ' in ' + SLOT_NAMES[slot]);
+  // Auto Pantheon: simulates every god lineup with the efficiency engine (base CpS, clicking, milk,
+  // golden cookie frequency, Cyclius' current phase) and slots the best one. Godzamok stays in the
+  // diamond slot when Auto-Godzamok is on; Rigidel is handled by the sugar lump option.
+  const SLOT_NAMES = ['diamond', 'ruby', 'jade'];
+  const pantheonInfo = { text: 'off', gain: 0 };
+  let pantheonNext = 0;
+  function lineupScore(T, lineup, delay) {
+    const oldSlot = T.slot.slice(), oldGod = T.godsById.map((g) => g.slot);
+    try {
+      for (const g of T.godsById) g.slot = -1;
+      for (let i = 0; i < 3; i++) { T.slot[i] = lineup[i]; if (lineup[i] >= 0) T.godsById[lineup[i]].slot = i; }
+      recalcGains();
+      return effectiveCps(delay);
+    } finally {
+      for (let i = 0; i < 3; i++) T.slot[i] = oldSlot[i];
+      T.godsById.forEach((g, i) => { g.slot = oldGod[i]; });
+      simUndoAchievements(); recalcGains(); simUndoAchievements();
     }
   }
-  // Cyclius schedule from FC (UTC minutes), see the wiki's Pantheon page.
-  function autoCycliusAction() {
-    const T = pantheon();
-    if (!T || T.swaps < 1 || !S.autoCyclius) return;
-    if (S.autoWorshipToggle) { S.autoWorshipToggle = 0; logEvent('autoCyclius', 'Turning off Auto-Pantheon'); refreshPanel(); }
-    let mode = S.autoCyclius;
-    if (mode === 2 && Game.hasAura('Supreme Intellect')) { mode = 1; }
-    const now = new Date();
-    const t = now.getUTCHours() * 60 + now.getUTCMinutes();
-    const CYC = T.gods.ages.id;
-    const g0 = godIdFor(S.autoWorship0), g1 = godIdFor(S.autoWorship1), g2 = godIdFor(S.autoWorship2);
-    const fill = (id, slot) => { if (id >= 0 && id !== CYC && id !== T.gods.order.id && T.slot[slot] !== id && T.swaps > 0) swapIn(id, slot); };
-    const put = (slot) => {
-      if (T.slot[slot] === CYC) return;
-      swapIn(CYC, slot);
-      logEvent('autoCyclius', 'Putting Cyclius in ' + SLOT_NAMES[slot]);
-      const others = [0, 1, 2].filter((s) => s !== slot);
-      fill(g0, others[0]); fill(g1, others[1]);
+  function bestLineup(T) {
+    const pool = ['mother', 'industry', 'labor', 'ages', 'decadence'];
+    if (!S.autoGC) pool.push('asceticism');           // Holobore is unslotted the moment a golden cookie is clicked
+    const fixed = [-1, -1, -1];
+    if (S.autoGodzamok && !S.autoDragonOrbs) fixed[0] = T.gods.ruin.id;
+    const ids = pool.map((k) => T.gods[k].id).concat([-1]);   // -1 = leave the slot empty
+    const free = [0, 1, 2].filter((s) => fixed[s] < 0);
+    const delay = delayAmount();                     // computed before the simulation starts
+    let best = null, current;
+    const pick = (slotIdx, used, lineup) => {
+      if (slotIdx === free.length) {
+        const v = lineupScore(T, lineup, delay);
+        if (!best || v > best.v * (1 + 1e-9)) best = { v, lineup: lineup.slice() };
+        return;
+      }
+      for (const id of ids) {
+        if (id >= 0 && used.has(id)) continue;
+        if (id >= 0) used.add(id);
+        lineup[free[slotIdx]] = id;
+        pick(slotIdx + 1, used, lineup);
+        if (id >= 0) used.delete(id);
+        lineup[free[slotIdx]] = -1;
+      }
     };
-    const none = () => { fill(g0, 0); fill(g1, 1); fill(g2, 2); if (Game.hasGod('ages')) { Game.forceUnslotGod('ages'); logEvent('autoCyclius', 'Removing Cyclius'); } };
-    if (Game.hasAura('Supreme Intellect') && mode === 1) {
-      // Supreme Intellect: ruby acts as diamond, jade as ruby. (FC's 7:30 boundary pointed at an undefined time.)
-      if (t < 72) put(1); else if (t < 360) put(2); else if (t < 450) put(1); else if (t < 559) none();
-      else if (t < 620) put(1); else if (t < 720) none(); else if (t < 792) put(1); else if (t < 1080) put(2);
-      else if (t < 1170) put(1); else if (t < 1260) none(); else if (t < 1350) put(1); else none();
-    } else if (mode === 1) {
-      if (t < 240) put(1); else if (t < 720) put(2); else if (t < 1080) put(1); else none();
-    } else {
-      if (t < 72) put(0); else if (t < 240) put(1); else if (t < 559) put(2); else if (t < 620) put(0);
-      else if (t < 720) put(2); else if (t < 792) put(0); else if (t < 1080) put(1); else if (t < 1170) put(0);
-      else if (t < 1260) none(); else if (t < 1350) put(0); else none();
-    }
+    simBegin();
+    try {
+      pick(0, new Set(), fixed.slice());
+      const cur = T.slot.map((id) => (id >= 0 && !(T.gods.order && id === T.gods.order.id) ? id : -1));
+      current = lineupScore(T, cur, delay);
+    } finally { simEnd(); }
+    return { best, current, fixed };
   }
-
+  function autoPantheonAction(force) {
+    const T = pantheon();
+    if (!S.autoWorshipToggle) { pantheonInfo.text = 'off'; return; }
+    if (!T) { pantheonInfo.text = 'no temple minigame yet'; return; }
+    if (!force && Date.now() < pantheonNext) return;
+    pantheonNext = Date.now() + 60000;
+    if (T.gods.order && T.slot.includes(T.gods.order.id) && S.autoSL === 2) return;   // Rigidel is borrowing a slot
+    const { best, current, fixed } = bestLineup(T);
+    if (!best) return;
+    const names = best.lineup.map((id) => (id >= 0 ? T.godsById[id].name.split(',')[0] : 'empty'));
+    pantheonInfo.gain = current > 0 ? best.v / current - 1 : 0;
+    const wantFixed = fixed.some((id, s) => id >= 0 && T.slot[s] !== id);
+    const isRigidel = (id) => T.gods.order && id === T.gods.order.id;
+    const differs = best.lineup.some((id, s) => T.slot[s] !== id && !(id < 0 && isRigidel(T.slot[s])));
+    pantheonInfo.text = names.join(' / ') + (differs ? ' (+' + (pantheonInfo.gain * 100).toFixed(1) + '% effective CpS once slotted)' : ' (slotted)');
+    // Spend swaps only for a real gain (>1%), or to put Godzamok in place for Auto-Godzamok.
+    if (!differs || (!wantFixed && pantheonInfo.gain < 0.01)) return;
+    const unslotExtras = () => {                     // unslotting is free
+      for (let s = 0; s < 3; s++) {
+        const cur = T.slot[s];
+        if (best.lineup[s] < 0 && cur >= 0 && !isRigidel(cur) && !best.lineup.includes(cur)) {
+          Game.forceUnslotGod(Object.keys(T.gods).find((k) => T.gods[k].id === cur));
+          logEvent('autoPantheon', 'Unslotted ' + T.godsById[cur].name.split(',')[0] + ' (costs more than it gives)');
+          invalidate();
+        }
+      }
+    };
+    unslotExtras();
+    for (let s = 0; s < 3 && T.swaps >= 1; s++) {
+      const id = best.lineup[s];
+      if (id < 0 || T.slot[s] === id) continue;
+      if (swapIn(id, s)) logEvent('autoPantheon', 'Slotted ' + T.godsById[id].name.split(',')[0] + ' in ' + SLOT_NAMES[s]);
+    }
+    unslotExtras();                                   // a swap can push the old god into another slot
+  }
   // ================================================================== Grimoire
   // Predicts Force the Hand of Fate outcomes by replaying the game's seeded RNG (2.058 order).
   const FTHOF_NAMES = { 'frenzy': 'Frenzy', 'multiply cookies': 'Lucky', 'click frenzy': 'Click Frenzy', 'cookie storm': 'Cookie Storm', 'blab': 'Blab',
@@ -1383,216 +1421,80 @@
   }
   function loanInterest() { return Game.hasBuff('Loan 1 (interest)') || Game.hasBuff('Loan 2 (interest)') || Game.hasBuff('Loan 3 (interest)'); }
 
-  function autoCastAction() {
-    const M = grimoire();
-    if (!M || !S.autoCasting) return;
-    if (S.autoFTHOFCombo || S.auto100ConsistencyCombo || S.autoSweet) return;   // combos take over the grimoire
-    if (!manaFull()) return;
-    const next = nextSpellName(0);
-    if (castable('hand of fate') && next === 'Sugar Lump') { cast('hand of fate', 'Cast Force the Hand of Fate for a free lump'); return; }
-    if (castable('stretch time') && ((cpsBonus() < 7 && loanInterest()) || cpsBonus() < 1) && (next === 'Clot' || next === 'Ruin Cookies')) { cast('stretch time', 'Cast Stretch Time to shorten debuff'); return; }
-    if (castable("haggler's charm") && cpsBonus() >= S.minCpSMult && (next === 'Clot' || next === 'Ruin Cookies')) { cast("haggler's charm", "Cast Haggler's Charm to avoid backfire"); return; }
-    const fate = () => cast('hand of fate', 'Cast Force the Hand of Fate');
-    const smartSpecials = () => {
-      if (next === 'Click Frenzy' && frenzyWindow() && buildingWindow()) return fate();
-      if (next === 'Elder Frenzy') {
-        if (Game.Upgrades['Elder Pact'].bought) { if (clickWindow(6)) fate(); }
-        else if (frenzyWindow() && clickWindow(6)) fate();
-        return true;
-      }
-      if (next === 'Cursed Finger' && clickWindow(10)) return fate();
-      return false;
-    };
-    switch (S.autoCasting) {
-      case 1: if (castable('conjure baked goods')) cast('conjure baked goods'); return;
-      case 2: if (castable('hand of fate') && cpsBonus() >= S.minCpSMult) fate(); return;
-      case 3:
-        if (!castable('hand of fate')) return;
-        if (!Game.hasBuff('Dragonflight') && (next === 'Blab' || next === 'Cookie Storm (Drop)')) { cast("haggler's charm", "Cast Haggler's Charm instead of Force the Hand of Fate"); return; }
-        if (cpsBonus() >= S.minCpSMult) {
-          if (!Game.hasBuff('Dragonflight') && next === 'Lucky') { fate(); return; }
-          if (['Cookie Chain', 'Cookie Storm', 'Frenzy', 'Building Special'].includes(next)) { fate(); return; }
-          smartSpecials();
-        }
-        return;
-      case 4:
-        if (!castable('hand of fate')) return;
-        if (!Game.hasBuff('Dragonflight') && ['Blab', 'Cookie Storm (Drop)', 'Cookie Chain', 'Cookie Storm', 'Frenzy', 'Lucky'].includes(next)) {
-          cast("haggler's charm", "Cast Haggler's Charm instead of Force the Hand of Fate"); return;
-        }
-        if (cpsBonus() >= S.minCpSMult) { if (next === 'Building Special') { fate(); return; } smartSpecials(); }
-        return;
-      case 5: {
-        const you = Game.Objects.You;
-        if (you.amount === 0 || !castable('spontaneous edifice')) return;
-        while (you.amount >= 400 || (you.amount > 0 && Game.cookies < you.price / 2)) { you.sell(1); logEvent('Store', 'Sold 1 You for ' + B(you.price * you.getSellMultiplier()) + ' cookies'); }
-        cast('spontaneous edifice');
-        return;
-      }
-      case 6: if (castable("haggler's charm")) cast("haggler's charm"); return;
-    }
-  }
-
-  // ---- double-cast Force the Hand of Fate (sell wizard towers between casts)
+  // ---- Smart Grimoire: the next Hand of Fate results are known, so decide per cast.
+  //  * Sugar lump next: cast now.
+  //  * Two great results in a row and enough mana: double-cast combo during a frenzy (sells towers between casts).
+  //  * Click Frenzy / Elder Frenzy / Building Special / Cursed Finger next: hold until a frenzy window.
+  //  * Frenzy next: cast when no Frenzy is running. Cookie Storm: cast. Lucky: cast during a frenzy (or after 15 min idle).
+  //  * Blab / storm drop / backfire next: burn it with the cheapest spell so the next cast is better.
+  const GREAT = new Set(['Click Frenzy', 'Elder Frenzy', 'Building Special', 'Cursed Finger']);
+  const BURN = new Set(['Blab', 'Cookie Storm (Drop)', 'Clot', 'Ruin Cookies']);
   const combo2 = { state: 0, count: 0, autobuy: 0 };
   const DOUBLE_CAST = { 1: [81, 21], 2: [81, 14], 3: [81, 8], 4: [81, 3], 5: [83, 1], 6: [88, 1], 7: [91, 1], 8: [93, 1], 9: [96, 1], 10: [98, 1] };
-  function hagglerFiller() {
-    const n0 = nextSpellName(0);
-    if (n0 === 'Sugar Lump') cast('hand of fate');
-    else if (cpsBonus() < 1 && (n0 === 'Clot' || n0 === 'Ruin Cookies')) cast('stretch time', 'Cast Stretch Time instead of FTHOF');
-    else cast("haggler's charm", "Cast Haggler's Charm instead of FTHOF");
+  const grimoireInfo = { text: 'off', fullSince: 0 };
+  function greatWindow(next) {
+    if (cpsBonus() < S.minCpSMult) return false;
+    if (next === 'Click Frenzy') return frenzyWindow() && (buildingWindow() || cpsBonus() >= 7 * 7);
+    if (next === 'Elder Frenzy') return Game.Upgrades['Elder Pact'].bought ? clickWindow(6) : frenzyWindow() && clickWindow(6);
+    if (next === 'Cursed Finger') return clickWindow(10);
+    if (next === 'Building Special') return frenzyWindow() && (clickWindow(10) || !hasClickBuff());
+    return false;
   }
-  function autoFTHOFComboAction() {
+  function finishDoubleCast() {
+    const M = grimoire(), wt = Game.Objects['Wizard tower'];
+    // Every golden cookie on screen adds to Hand of Fate's fail chance, so collect the first cast's
+    // cookie before the second cast, then re-check the prediction. (FC cast blind here.)
+    for (const sh of Game.shimmers.slice()) if (sh.type === 'golden' && sh.force && goodForced(sh.force)) sh.pop();
+    combo2.autobuy = S.autoBuy ? 1 : 0; S.autoBuy = 0;
+    wt.sell(combo2.count);
+    M.computeMagicM();
+    const next = nextSpellName(0);
+    if (GREAT.has(next) || next === 'Sugar Lump') cast('hand of fate', 'Double cast Force the Hand of Fate (' + next + ')');
+    else logEvent('autoCasting', 'Second cast would now give ' + next + ', so it was not cast');
+    safeBuy(wt, combo2.count);
+    if (combo2.autobuy) S.autoBuy = 1;
+    combo2.count = 0; combo2.state = 0; combo2.autobuy = 0;
+    invalidate();
+  }
+  function burn(next) {
+    if (castable('stretch time') && cpsBonus() < 1 && (next === 'Clot' || next === 'Ruin Cookies')) cast('stretch time', 'Cast Stretch Time to skip a ' + next + ' backfire');
+    else if (castable("haggler's charm")) cast("haggler's charm", "Cast Haggler's Charm to skip " + next);
+  }
+  function smartGrimoireAction() {
     const M = grimoire();
-    if (!M || !S.autoFTHOFCombo) return;
-    const lvl = Game.Objects['Wizard tower'].level;
-    if (lvl > 10) { S.autoFTHOFCombo = 0; logEvent('autoFTHOFCombo', 'Combo disabled, wizard tower level too high'); refreshPanel(); return; }
-    if (S.auto100ConsistencyCombo || S.autoSweet) { S.autoFTHOFCombo = 0; refreshPanel(); return; }
+    if (!S.autoCasting) { grimoireInfo.text = 'off'; return; }
+    if (!M) { grimoireInfo.text = 'no grimoire yet'; return; }
+    if (combo2.state === 3) { finishDoubleCast(); return; }
+    if (!manaFull()) { grimoireInfo.fullSince = 0; grimoireInfo.text = 'charging mana (' + Math.floor(M.magic) + '/' + M.magicM + ')'; return; }
+    if (!grimoireInfo.fullSince) grimoireInfo.fullSince = Date.now();
+    if (!castable('hand of fate')) { grimoireInfo.text = 'max mana too low for Hand of Fate'; if (castable('conjure baked goods')) cast('conjure baked goods'); return; }
     const n0 = nextSpellName(0), n1 = nextSpellName(1);
-    // soft fail: combo was armed but the click frenzy is gone (FC's '!a == b' test made this unreachable)
-    if (combo2.state > 3 || (combo2.state > 2 && manaFull() && !Game.hasBuff('Click frenzy') && n0 !== 'Click Frenzy' && n1 !== 'Click Frenzy')) {
-      if (combo2.autobuy) { S.autoBuy = 1; combo2.autobuy = 0; }
-      combo2.state = 0;
-      logEvent('autoFTHOFCombo', 'Soft fail, spell combo is gone');
-    }
-    const pair = (a, b) => (n0 === a && n1 === b) || (n1 === a && n0 === b);
-    if (!combo2.state && (pair('Click Frenzy', 'Building Special') || pair('Click Frenzy', 'Elder Frenzy'))) combo2.state = 1;
-    if (!combo2.state && n0 === 'Building Special' && n1 === 'Building Special') combo2.state = 2;
-    if (!combo2.state && manaFull()) hagglerFiller();
-    const arm = () => {
-      const t = DOUBLE_CAST[lvl];
-      if (!t || M.magic < t[0]) return;
-      combo2.count = Math.max(0, Game.Objects['Wizard tower'].amount - t[1]);
-      cast('hand of fate', 'Cast first Force the Hand of Fate');
-      combo2.state = 3;
-    };
-    switch (combo2.state) {
-      case 1:
-        if (n0 !== 'Click Frenzy' && n1 !== 'Click Frenzy') { combo2.state = 0; return; }
-        if (manaFull() && cpsBonus() >= S.minCpSMult && frenzyWindow() && buildingWindow()) arm();
-        return;
-      case 2:
-        if (n0 !== 'Building Special' && n1 !== 'Building Special') { combo2.state = 0; return; }
-        if (manaFull() && cpsBonus() >= S.minCpSMult && frenzyWindow() && clickWindow(10)) arm();
-        return;
-      case 3: {
-        combo2.autobuy = S.autoBuy ? 1 : 0; S.autoBuy = 0;
-        const wt = Game.Objects['Wizard tower'];
-        wt.sell(combo2.count);
-        M.computeMagicM();
-        cast('hand of fate', 'Double cast Force the Hand of Fate');
-        safeBuy(wt, combo2.count);
-        if (combo2.autobuy) { S.autoBuy = 1; combo2.autobuy = 0; }
-        combo2.count = 0; combo2.state = 0;
-        invalidate();
-        return;
+    const waited = Date.now() - grimoireInfo.fullSince;
+    const fate = (why) => { grimoireInfo.fullSince = 0; return cast('hand of fate', why || 'Cast Force the Hand of Fate (' + n0 + ')'); };
+    if (n0 === 'Sugar Lump') { fate('Cast Force the Hand of Fate for a free sugar lump'); return; }
+    const lvl = Game.Objects['Wizard tower'].level, t = DOUBLE_CAST[lvl];
+    if (t && M.magicM >= t[0] && GREAT.has(n0) && GREAT.has(n1) && !(n0 === 'Cursed Finger' && n1 === 'Cursed Finger')) {
+      grimoireInfo.text = 'holding ' + n0 + ' + ' + n1 + ' for a double cast';
+      if (greatWindow(n0 === 'Click Frenzy' || n1 === 'Click Frenzy' ? 'Click Frenzy' : n0)) {
+        combo2.count = Math.max(0, Game.Objects['Wizard tower'].amount - t[1]);
+        if (fate('Cast first Force the Hand of Fate (' + n0 + ')')) combo2.state = 3;
       }
+      return;
     }
-  }
-
-  // ---- 100% consistency combo (experimental, FC state machine)
-  const combo100 = { state: 0, counts: null, saved: {} };
-  const C100_BUILDINGS = [['Farm', 1], ['Mine', 0], ['Factory', 0], ['Bank', 1], ['Temple', 1], ['Shipment', 0], ['Alchemy lab', 0], ['Time machine', 0]];
-  function c100Save(key) { combo100.saved[key] = S[key] ? 1 : 0; S[key] = 0; }
-  function c100Restore() { for (const k in combo100.saved) if (combo100.saved[k]) S[k] = 1; combo100.saved = {}; refreshPanel(); }
-  function c100SellAll() { for (const [n] of C100_BUILDINGS) Game.Objects[n].sell(combo100.counts[n]); }
-  function c100BuyBack() { for (const [n] of C100_BUILDINGS) { const b = Game.Objects[n]; if (b.amount < combo100.counts[n]) safeBuy(b, combo100.counts[n] - b.amount); } }
-  function auto100ConsistencyComboAction() {
-    const M = grimoire(), G = garden(), T = pantheon();
-    if (!M || !G || !S.auto100ConsistencyCombo) return;
-    if (Game.Objects['Wizard tower'].level !== 10) { S.auto100ConsistencyCombo = 0; logEvent('auto100ConsistencyCombo', 'Needs wizard towers at level 10'); refreshPanel(); return; }
-    if (S.autoSweet) { S.auto100ConsistencyCombo = 0; refreshPanel(); return; }
-    if (Game.dragonLevel < 27) return;
-    const st = combo100.state;
-    if (st > 20 || (((st < 2 && Object.keys(combo100.saved).length) || (st > 1 && !buildingBuff() && !hasClickBuff())) && manaFull())) {
-      c100Restore(); combo100.state = 0;
+    if (GREAT.has(n0)) {
+      grimoireInfo.text = 'holding ' + n0 + ' for a frenzy';
+      if (greatWindow(n0) || waited > 20 * 60000) fate();
+      return;
     }
-    const n0 = nextSpellName(0), n1 = nextSpellName(1);
-    const pair = (a, b) => (n0 === a && n1 === b) || (n1 === a && n0 === b);
-    if (!combo100.state && M.magicM >= 98 && (pair('Click Frenzy', 'Building Special') || pair('Click Frenzy', 'Elder Frenzy'))) combo100.state = 1;
-    if (!combo100.state && manaFull()) { hagglerFiller(); return; }
-    const wt = Game.Objects['Wizard tower'];
-    switch (combo100.state) {
-      case 1:
-        if (manaFull() && cpsBonus() >= S.minCpSMult && frenzyWindow() && buildingWindow()) {
-          // FC re-read these counts every tick, so after selling it bought back nothing
-          combo100.counts = { wizard: wt.amount - 1 };
-          for (const [n, keep] of C100_BUILDINGS) combo100.counts[n] = Math.max(0, Game.Objects[n].amount - keep);
-          c100Save('autoBuy'); c100Save('autoDragonToggle'); c100Save('autoWorshipToggle');
-          combo100.state = 2;
-        }
-        return;
-      case 2: c100Save('autoGC'); c100Save('autoGS'); combo100.state = 3; return;
-      case 3: {
-        // FC checked for a *locked* whiskerbloom here; it means: plant whiskerbloom if we have the seed
-        const wb = G.plants.whiskerbloom;
-        if (wb && wb.unlocked) {
-          let has = false;
-          for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if (G.plot[y][x][0] - 1 === wb.id) has = true;
-          if (!has) {
-            G.harvestAll();
-            for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) if (G.isTileUnlocked(x, y) && G.canPlant(wb)) G.useTool(wb.id, x, y);
-          }
-        }
-        combo100.state = 4; return;
-      }
-      case 4:
-        if (!Game.hasAura('Radiant Appetite')) setDragonAura(15, Game.dragonAura === 16 ? 1 : 0);
-        if (!Game.hasAura("Dragon's Fortune")) setDragonAura(16, Game.dragonAura === 15 ? 1 : 0);
-        combo100.state = 5; return;
-      case 5: {
-        const off = Game.Upgrades['Golden switch [off]'];
-        if (off.unlocked && !off.bought) off.buy(1);
-        combo100.state = 6; return;
-      }
-      case 6: if (manaFull()) { cast('hand of fate', 'Combo: FTHOF 1'); combo100.state = 7; } return;
-      case 7:
-        wt.sell(combo100.counts.wizard); M.computeMagicM();
-        if (M.magic >= 30) { cast('hand of fate', 'Combo: FTHOF 2'); safeBuy(wt, combo100.counts.wizard); combo100.state = 8; }
-        return;
-      case 8:
-        if (canSpendLump() && M.lumpRefill) { M.lumpRefill.click(); Game.ConfirmPrompt(); }
-        combo100.state = 9; return;
-      case 9: if (manaFull()) { cast('hand of fate', 'Combo: FTHOF 3'); combo100.state = 10; } return;
-      case 10:
-        wt.sell(combo100.counts.wizard); M.computeMagicM();
-        if (M.magic >= 30) { cast('hand of fate', 'Combo: FTHOF 4'); safeBuy(wt, combo100.counts.wizard); combo100.state = 11; }
-        return;
-      case 11: c100Save('autoGodzamok'); combo100.state = 12; return;
-      case 12: {
-        let popped = 0;
-        for (const sh of Game.shimmers.slice()) if (popped < 2 && sh.type === 'golden') { sh.pop(); popped++; }
-        combo100.state = 13; return;
-      }
-      case 13:
-        if (T && !Game.hasGod('ruin')) swapIn(T.gods.ruin.id, 0);
-        c100SellAll(); combo100.state = 14; return;
-      case 14:
-        if (T && !Game.hasGod('mother')) swapIn(T.gods.mother.id, 1);
-        combo100.state = 15; return;
-      case 15: c100BuyBack(); combo100.state = 16; return;
-      case 16:
-        for (const sh of Game.shimmers.slice()) if (sh.type === 'golden' && !sh.wrath) sh.pop();   // FC read Game.shimmer.wrath
-        combo100.state = 17; return;
-      case 17:
-        if (!Game.hasBuff('Devastation') && !Game.hasBuff('Cursed finger') && hasClickBuff()) {
-          if (Game.Objects.Farm.amount >= 10) c100SellAll();
-          if (Game.Objects.Farm.amount < 10) c100BuyBack();
-        }
-        if (!hasClickBuff()) combo100.state = 18;
-        return;
-      case 18:
-        if (!Game.hasBuff('Click frenzy') && !Game.shimmers.some((s) => s.type === 'golden')) {
-          const on = Game.Upgrades['Golden switch [on]'];
-          if (on.unlocked && !on.bought) { Game.recalculateGains = 1; on.buy(1); }
-          if (combo100.saved.autoGC) { S.autoGC = 1; delete combo100.saved.autoGC; }
-          if (combo100.saved.autoGS) { S.autoGS = 1; delete combo100.saved.autoGS; }
-          combo100.state = 19;
-        }
-        return;
-      case 19: c100BuyBack(); combo100.state = 20; return;
-      case 20: c100Restore(); logEvent('auto100ConsistencyCombo', 'Combo completed'); combo100.state = 0; invalidate(); return;
+    if (n0 === 'Frenzy') { grimoireInfo.text = 'next: Frenzy'; if (buffSecs('Frenzy') < 10) fate(); return; }
+    if (n0 === 'Cookie Storm') { fate(); return; }
+    if (n0 === 'Lucky') {
+      grimoireInfo.text = 'holding Lucky for a frenzy';
+      if (cpsBonus() >= S.minCpSMult || waited > 15 * 60000) fate();
+      return;
     }
+    if (BURN.has(n0)) { grimoireInfo.text = 'skipping ' + n0; burn(n0); return; }
+    fate();
   }
 
   function autoSugarFrenzyAction() {
@@ -1600,37 +1502,9 @@
     const sf = Game.UpgradesById[452], craving = Game.UpgradesById[450];
     if (!canSpendLump() || cpsBonus() < S.minASFMult || !craving.unlocked || sf.bought) return;
     if (loanInterest() && S.minLoanMult) return;
-    const inCombo = combo100.state === 5 || (S.autoSugarFrenzy === 2 && combo2.state === 3);
-    if (!inCombo) return;
+    if (combo2.state !== 3) return;
     sf.buy(1); Game.ConfirmPrompt();
     logEvent('autoSugarFrenzy', 'Started a Sugar Frenzy this ascension');
-  }
-
-  // ---- auto sweet (experimental): keep reincarnating until a free sugar lump is within 10 casts
-  const sweet = { state: 0, manaPrev: -1, autobuy: 0 };
-  function autoSweetAction() {
-    if (!S.autoSweet) return;
-    const M = grimoire();
-    if (!M) return;
-    if (S.autoBuy) { sweet.autobuy = 1; S.autoBuy = 0; }
-    if (!sweet.state) {
-      for (let i = 0; i < 10; i++) if (nextSpellName(i) === 'Sugar Lump') { sweet.state = 1; break; }
-    }
-    if (!sweet.state) {
-      if (!Game.OnAscend && !Game.AscendTimer) { logEvent('autoSweet', 'No "Sweet" detected, ascending'); Game.Reincarnate(1); }
-      return;
-    }
-    if (S.towerLimit && sweet.manaPrev === -1) { sweet.manaPrev = S.manaMax; S.manaMax = 37; }
-    if (manaFull()) {
-      if (nextSpellName(0) !== 'Sugar Lump') cast("haggler's charm", "Cast Haggler's Charm while waiting for 'Sweet'");
-      else {
-        cast('hand of fate', 'Sugar Lump Get! Disabling Auto Sweet');
-        sweet.state = 0;
-        if (sweet.manaPrev !== -1) { S.manaMax = sweet.manaPrev; sweet.manaPrev = -1; }
-        if (sweet.autobuy) { S.autoBuy = 1; sweet.autobuy = 0; }
-        S.autoSweet = 0; save(); refreshPanel();
-      }
-    }
   }
 
   // ================================================================== Dragon
@@ -1852,7 +1726,6 @@
   }
   function gardenAction() {
     if (!S.autoGarden) { gardenStatus = 'off'; return; }
-    if (combo100.state >= 3 && combo100.state < 20) { gardenStatus = 'paused for combo'; return; }
     const M = garden();
     if (!M || !M.plot) { gardenStatus = 'no garden (needs a level 1 Farm)'; return; }
     if (M.freeze) { gardenStatus = 'garden is frozen'; return; }
@@ -1929,7 +1802,6 @@
 #scEfficiencyTable th,#scEfficiencyTable td{padding:1px 6px;text-align:right;}
 #scEfficiencyTable th:first-child,#scEfficiencyTable td:first-child{text-align:left;}
 #scEfficiencyTable tr.sc-divider td{border-top:2px dashed #999;}
-#scMenuRoot .sc-log{font-size:11px;opacity:.85;white-space:pre-wrap;padding:0 16px;}
 #scInfobox{position:absolute;left:0;bottom:0;pointer-events:none;z-index:6}
 #scInfoText{position:absolute;left:8px;bottom:8px;z-index:6;pointer-events:none;font:11px Tahoma,Arial,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000;background:rgba(0,0,0,.35);padding:4px 6px;border-radius:4px;max-width:260px}`;
 
@@ -1943,7 +1815,6 @@
   const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // ---- control list, worded like Frozen Cookies' options page (fc_preferences.js)
-  const GOD_LABELS = GODS.map((g) => g[1]);
   const ON_OFF = (name) => [name + ' OFF', name + ' ON'];
   const num = (key, unit, title, desc, min, max, prefix) => ({ key, unit, title, desc, min, max, prefix: prefix || '' });
   const FRENZY_PROMPT = 'What CpS multiplier should trigger this? (e.g. "7" will trigger during a Frenzy, "1" prevents triggering during a clot)';
@@ -1953,9 +1824,7 @@
       extra: num('cookieClickSpeed', ' clicks/sec', 'Autoclicking!', 'How many times per second do you want to click? (The game ignores scripted clicks faster than 50 per second.)', 1, 50) },
     { key: 'autoFrenzy', hint: 'Auto-click for click frenzies.', display: ON_OFF('Autofrenzy'),
       extra: num('frenzyClickSpeed', ' clicks/sec', 'Autoclicking!', 'How many times per second do you want to click during click frenzies? (50 max)', 1, 50) },
-    { key: 'muteClicks', hint: 'Mute the click sound while auto-clicking.', display: ON_OFF('Mute Autoclicks'), extraOpt: true },
-    { key: 'autoGC', hint: 'Auto-click golden/wrath cookies.', display: ON_OFF('Autoclick GC') },
-    { key: 'gcSkipWrath', hint: 'Leave wrath cookies alone when auto-clicking golden cookies.', display: ON_OFF('Skip Wrath Cookies'), extraOpt: true },
+    { key: 'autoGC', hint: 'Auto-click golden/wrath cookies (leaves Hand of Fate backfires like Clot and Ruin alone).', display: ON_OFF('Autoclick GC') },
     { key: 'autoReindeer', hint: 'Auto-click reindeer.', display: ON_OFF('Autoclick Reindeer') },
     { key: 'autoFortune', hint: 'Auto-click fortunes in news ticker.', display: ON_OFF('Auto Fortune') },
     { head: 'Auto-buying:' },
@@ -1986,21 +1855,13 @@
     { key: 'autoLoan', hint: 'Auto-take loans during click frenzies.', display: ['Auto-Loans OFF', 'Take loans 1 and 2', 'Take all 3 loans'],
       extra: num('minLoanMult', ' minimum Frenzy', 'Loans!', 'What CpS multiplier should trigger taking loans? (e.g. "777" for a Frenzy + Click Frenzy combo)', 0, 1e300, 'x') },
     { head: 'Pantheon:' },
-    { key: 'autoWorshipToggle', hint: "Auto-slot selected gods (can't select same god twice).", display: ON_OFF('Auto Pantheon') },
-    { key: 'autoWorship0', hint: 'Auto-slot god in DIAMOND slot.', display: GOD_LABELS },
-    { key: 'autoWorship1', hint: 'Auto-slot god in RUBY slot.', display: GOD_LABELS },
-    { key: 'autoWorship2', hint: 'Auto-slot god in JADE slot.', display: GOD_LABELS },
-    { key: 'autoCyclius', hint: 'Auto-swap Cyclius for max CpS (set gods above, do not use Cyclius).', display: ['Auto-Cyclius OFF', 'Auto-Cyclius in RUBY and JADE', 'Auto-Cyclius in all slots'] },
+    { key: 'autoWorshipToggle', hint: 'Auto-pick the best gods: simulates every lineup and slots the one with the most CpS (Godzamok stays in diamond with Auto-Godzamok).', display: ON_OFF('Auto Pantheon') },
     { head: 'Grimoire:' },
     { key: 'towerLimit', hint: 'Stop buying Wizard Towers at set max mana.', display: ON_OFF('Wizard Tower Cap'), extra: num('manaMax', ' max Mana', 'Mana Cap!', 'Set the maximum mana wizard towers should reach (37 recommended).', 0, 1000) },
-    { key: 'autoCasting', hint: 'Auto-cast selected spell when mana is full.', display: ['Auto Cast OFF', 'Auto Cast CONJURE BAKED GOODS', 'Auto Cast FORCE THE HAND OF FATE (simple)', 'Auto Cast FORCE THE HAND OF FATE (smart)', 'Auto Cast FTHOF (Click and Building Specials only)', 'Auto Cast SPONTANEOUS EDIFICE', "Auto Cast HAGGLER'S CHARM"],
-      extra: num('minCpSMult', ' minimum Frenzy', 'Autocasting!', FRENZY_PROMPT, 0, 1e300, 'x') },
-    { note: 'Only one combo can be active at a time.' },
-    { key: 'autoFTHOFCombo', hint: 'Auto double-cast FTHOF combos (needs enough mana).', display: ON_OFF('Double Cast FTHOF') },
-    { key: 'auto100ConsistencyCombo', hint: '⚠️ EXPERIMENTAL: Auto-cast 100% Consistency Combo.', display: ON_OFF('Auto Cast 100% Consistency Combo') },
-    { key: 'autoSugarFrenzy', hint: 'Auto-buy Sugar Frenzy during first combo of X Frenzy.', display: ['Auto Sugar Frenzy OFF', 'ASF for 100% Consistency Combo', 'ASF also for Double Cast Combo'],
+    { key: 'autoCasting', hint: 'Smart Grimoire: reads the upcoming Hand of Fate results and decides when to cast, skip a bad one, or double-cast.', display: ON_OFF('Smart Grimoire'),
+      extra: num('minCpSMult', ' minimum Frenzy', 'Smart Grimoire!', FRENZY_PROMPT, 0, 1e300, 'x') },
+    { key: 'autoSugarFrenzy', hint: 'Auto-buy Sugar Frenzy during a double-cast combo of X Frenzy.', display: ON_OFF('Auto Sugar Frenzy'),
       extra: num('minASFMult', ' minimum Frenzy', 'Sugar Frenzy!', 'What CpS multiplier should trigger buying Sugar Frenzy?', 0, 1e300, 'x') },
-    { key: 'autoSweet', hint: "⚠️ EXPERIMENTAL: Ascend until 'Sweet' spell appears.", display: ON_OFF('Auto Sweet') },
     { head: 'Dragon:' },
     { key: 'autoDragon', hint: 'Auto-upgrade dragon.', display: ON_OFF('Dragon Upgrading') },
     { key: 'petDragon', hint: 'Auto-pet dragon for drops.', display: ON_OFF('Dragon Petting') },
@@ -2217,6 +2078,8 @@
     }
     if (liveWrinklers().length) h += listing('Wrinkler Value', B(wrinklerValue()));
     if (grimoire()) h += listing('Next Hand of Fate spells', [0, 1, 2, 3].map(nextSpellName).join(', '));
+    if (S.autoCasting) h += listing('Smart Grimoire', esc(grimoireInfo.text));
+    if (S.autoWorshipToggle) h += listing('Auto Pantheon', esc(pantheonInfo.text));
     const Mk = market();
     if (S.autoTrade && Mk) {
       let held = 0, val = 0;
@@ -2229,8 +2092,6 @@
 
     if (showGraphs) out += subsection('Stat Graphs', '<div class="listing"><canvas id="scGraph" width="560" height="260"></canvas></div>' +
       '<div class="listing"><a class="option" onclick="SleepyCookies._recordStats()">Record Stats Now</a> <a class="option" onclick="SleepyCookies._clearStats()">Clear Stats</a></div>');
-
-    out += subsection('Recent Actions', '<div class="sc-log">' + (panelLog.length ? panelLog.map(esc).join('\n') : 'Nothing logged yet.') + '</div>');
 
     let t = '<table id="scEfficiencyTable"><tr><th>Building</th><th>Eff%</th><th>Efficiency</th><th>Cost</th><th>Δ CpS</th></tr>';
     for (const r of recommendationList().slice(0, 80)) {
@@ -2497,16 +2358,13 @@
   job('autoGS', autoGSAction);
   job('autoGodzamok', autoGodzamokAction);
   job('autoDragon', autoDragonAction);
-  job('autoFTHOFCombo', autoFTHOFComboAction);
-  job('auto100ConsistencyCombo', auto100ConsistencyComboAction);
   job('autoLoan', autoLoanAction);
   job('autoSugarFrenzy', autoSugarFrenzyAction);
   job('autoEaster', autoEasterAction);
   job('autoHalloween', autoHalloweenAction);
-  job('autoWorship', autoWorshipAction);
-  job('autoCast', autoCastAction);
+  job('autoPantheon', () => autoPantheonAction(false));
+  job('autoCast', smartGrimoireAction);
   job('autoFortune', autoFortuneAction);
-  job('autoSweet', autoSweetAction);
   job('autoBank', autoBankAction);
   job('autoBroker', autoBrokerAction);
   job('petDragon', petDragonAction);
@@ -2519,7 +2377,6 @@
   job('ui', statusUiTick);
   job('infobox', infoboxTick);
   job('spellTooltip', hookSpellTooltip);
-  job('autoCyclius', autoCycliusAction);
   job('save', saveNow);
 
   function tick() {
@@ -2529,15 +2386,14 @@
     run.clickRate();
     if (!busy) {
       run.autoGS(); run.autoGodzamok(); run.autoDragon();
-      if (tickN % 2 === 0) { run.autoFTHOFCombo(); run.auto100ConsistencyCombo(); run.autoLoan(); run.autoSugarFrenzy(); }
-      if (tickN % 5 === 0) { run.autoEaster(); run.autoHalloween(); run.autoWorship(); }
+      if (tickN % 2 === 0) { run.autoLoan(); run.autoSugarFrenzy(); }
+      if (tickN % 5 === 0) { run.autoEaster(); run.autoHalloween(); run.autoPantheon(); }
       if (tickN % 10 === 0) {
         run.autoCast(); run.autoFortune(); run.autoBank(); run.autoBroker(); run.petDragon(); run.dragonAuras(); run.dragonOrbs();
         run.otherUpgrades(); run.trader(); run.garden(); run.spellTooltip();
       }
-      if (tickN % 600 === 5) run.autoCyclius();
     }
-    if (tickN % 10 === 0) { run.autoSweet(); run.stats(); run.ui(); }
+    if (tickN % 10 === 0) { run.stats(); run.ui(); }
     if (tickN % 3 === 0) run.infobox();
     if (tickN % 300 === 0) run.save();
   }
@@ -2577,7 +2433,7 @@
     _applyRecommended: () => applyRecommended(),
     _recordStats: () => { saveStats(); refreshMenuInfo(); },
     _clearStats: () => { D.trackedStats = []; save(); refreshMenuInfo(); },
-    _internal: { combo2, combo100, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
+    _internal: { combo2, pantheonInfo, grimoireInfo, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
   };
   start();
 })();
