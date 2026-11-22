@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.2.0 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.2.1 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -22,7 +22,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.2.0';
+  const VERSION = '2.2.1';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -1423,22 +1423,32 @@
 
   // ---- Smart Grimoire: the next Hand of Fate results are known, so decide per cast.
   //  * Sugar lump next: cast now.
-  //  * Two great results in a row and enough mana: double-cast combo during a frenzy (sells towers between casts).
-  //  * Click Frenzy / Elder Frenzy / Building Special / Cursed Finger next: hold until a frenzy window.
-  //  * Frenzy next: cast when no Frenzy is running. Cookie Storm: cast. Lucky: cast during a frenzy (or after 15 min idle).
-  //  * Blab / storm drop / backfire next: burn it with the cheapest spell so the next cast is better.
+  //  * Good result next (Click Frenzy, Elder Frenzy, Building Special, Cursed Finger, Lucky): cast the moment the
+  //    current multiplier reaches the "minimum Frenzy" setting, as long as there is enough mana for the spell
+  //    (full mana is not required). Two good results in a row with full mana: double-cast instead.
+  //  * Frenzy next: cast when no Frenzy is running. Cookie Storm: cast.
+  //  * Blab / storm drop / backfire next: burn it with a cheap spell so the next cast is better.
   const GREAT = new Set(['Click Frenzy', 'Elder Frenzy', 'Building Special', 'Cursed Finger']);
   const BURN = new Set(['Blab', 'Cookie Storm (Drop)', 'Clot', 'Ruin Cookies']);
   const combo2 = { state: 0, count: 0, autobuy: 0 };
   const DOUBLE_CAST = { 1: [81, 21], 2: [81, 14], 3: [81, 8], 4: [81, 3], 5: [83, 1], 6: [88, 1], 7: [91, 1], 8: [93, 1], 9: [96, 1], 10: [98, 1] };
   const grimoireInfo = { text: 'off', fullSince: 0 };
+  const MIN_BUFF_SECS = 2;                          // ignore boosts that run out before the new buff would matter
+  // The multiplier a result would combine with. Elder Frenzy and Building Special also multiply clicks, so click
+  // buffs count for them; Click Frenzy, Cursed Finger and Lucky are worth CpS-multiplier times their base.
+  function castMult(next) {
+    const withClick = next === 'Elder Frenzy' || next === 'Building Special';
+    let r = 1;
+    for (const k in Game.buffs) {
+      const b = Game.buffs[k], secs = b.time / Game.fps;
+      if (typeof b.multCpS !== 'undefined' && (b.multCpS < 1 || secs >= MIN_BUFF_SECS)) r *= b.multCpS;
+      if (withClick && typeof b.multClick !== 'undefined' && b.multClick > 1 && secs >= MIN_BUFF_SECS) r *= b.multClick;
+    }
+    return r;
+  }
   function greatWindow(next) {
-    if (cpsBonus() < S.minCpSMult) return false;
-    if (next === 'Click Frenzy') return frenzyWindow() && (buildingWindow() || cpsBonus() >= 7 * 7);
-    if (next === 'Elder Frenzy') return Game.Upgrades['Elder Pact'].bought ? clickWindow(6) : frenzyWindow() && clickWindow(6);
-    if (next === 'Cursed Finger') return clickWindow(10);
-    if (next === 'Building Special') return frenzyWindow() && (clickWindow(10) || !hasClickBuff());
-    return false;
+    if (next === 'Click Frenzy' && (Game.hasBuff('Click frenzy') || Game.hasBuff('Dragonflight'))) return false;  // would only refresh it
+    return castMult(next) >= S.minCpSMult;
   }
   function finishDoubleCast() {
     const M = grimoire(), wt = Game.Objects['Wizard tower'];
@@ -1465,34 +1475,40 @@
     if (!S.autoCasting) { grimoireInfo.text = 'off'; return; }
     if (!M) { grimoireInfo.text = 'no grimoire yet'; return; }
     if (combo2.state === 3) { finishDoubleCast(); return; }
-    if (!manaFull()) { grimoireInfo.fullSince = 0; grimoireInfo.text = 'charging mana (' + Math.floor(M.magic) + '/' + M.magicM + ')'; return; }
-    if (!grimoireInfo.fullSince) grimoireInfo.fullSince = Date.now();
-    if (!castable('hand of fate')) { grimoireInfo.text = 'max mana too low for Hand of Fate'; if (castable('conjure baked goods')) cast('conjure baked goods'); return; }
+    const full = manaFull();
+    if (!full) grimoireInfo.fullSince = 0;
+    else if (!grimoireInfo.fullSince) grimoireInfo.fullSince = Date.now();
+    const charging = 'charging mana (' + Math.floor(M.magic) + '/' + M.magicM + ')';
+    if (!castable('hand of fate')) {
+      if (!full) { grimoireInfo.text = charging; return; }
+      grimoireInfo.text = 'max mana too low for Hand of Fate';
+      if (castable('conjure baked goods')) cast('conjure baked goods');
+      return;
+    }
     const n0 = nextSpellName(0), n1 = nextSpellName(1);
-    const waited = Date.now() - grimoireInfo.fullSince;
-    const fate = (why) => { grimoireInfo.fullSince = 0; return cast('hand of fate', why || 'Cast Force the Hand of Fate (' + n0 + ')'); };
+    const waited = full ? Date.now() - grimoireInfo.fullSince : 0;
+    const fate = (why) => { grimoireInfo.fullSince = 0; grimoireInfo.text = 'cast ' + n0; return cast('hand of fate', why || 'Cast Force the Hand of Fate (' + n0 + ') at x' + fcBeautify(castMult(n0)) + ' multiplier'); };
     if (n0 === 'Sugar Lump') { fate('Cast Force the Hand of Fate for a free sugar lump'); return; }
+    const waitText = (what) => (n0 === 'Click Frenzy' && (Game.hasBuff('Click frenzy') || Game.hasBuff('Dragonflight')))
+      ? 'holding ' + what + ' until the running click buff ends'
+      : 'holding ' + what + ' until x' + fcBeautify(S.minCpSMult) + ' (now x' + fcBeautify(castMult(n0)) + ')';
     const lvl = Game.Objects['Wizard tower'].level, t = DOUBLE_CAST[lvl];
-    if (t && M.magicM >= t[0] && GREAT.has(n0) && GREAT.has(n1) && !(n0 === 'Cursed Finger' && n1 === 'Cursed Finger')) {
-      grimoireInfo.text = 'holding ' + n0 + ' + ' + n1 + ' for a double cast';
-      if (greatWindow(n0 === 'Click Frenzy' || n1 === 'Click Frenzy' ? 'Click Frenzy' : n0)) {
+    if (full && t && M.magicM >= t[0] && GREAT.has(n0) && GREAT.has(n1) && !(n0 === 'Cursed Finger' && n1 === 'Cursed Finger')) {
+      grimoireInfo.text = waitText(n0 + ' + ' + n1 + ' (double cast)');
+      if (greatWindow(n0)) {
         combo2.count = Math.max(0, Game.Objects['Wizard tower'].amount - t[1]);
-        if (fate('Cast first Force the Hand of Fate (' + n0 + ')')) combo2.state = 3;
+        if (fate('Cast first Force the Hand of Fate (' + n0 + ') at x' + fcBeautify(castMult(n0)) + ' multiplier')) combo2.state = 3;
       }
       return;
     }
-    if (GREAT.has(n0)) {
-      grimoireInfo.text = 'holding ' + n0 + ' for a frenzy';
-      if (greatWindow(n0) || waited > 20 * 60000) fate();
+    if (GREAT.has(n0) || n0 === 'Lucky') {
+      grimoireInfo.text = waitText(n0);
+      if (greatWindow(n0) || waited > (n0 === 'Lucky' ? 15 : 20) * 60000) fate();
       return;
     }
+    if (!full) { grimoireInfo.text = charging + ', next: ' + n0; return; }
     if (n0 === 'Frenzy') { grimoireInfo.text = 'next: Frenzy'; if (buffSecs('Frenzy') < 10) fate(); return; }
     if (n0 === 'Cookie Storm') { fate(); return; }
-    if (n0 === 'Lucky') {
-      grimoireInfo.text = 'holding Lucky for a frenzy';
-      if (cpsBonus() >= S.minCpSMult || waited > 15 * 60000) fate();
-      return;
-    }
     if (BURN.has(n0)) { grimoireInfo.text = 'skipping ' + n0; burn(n0); return; }
     fate();
   }
@@ -1858,7 +1874,7 @@
     { key: 'autoWorshipToggle', hint: 'Auto-pick the best gods: simulates every lineup and slots the one with the most CpS (Godzamok stays in diamond with Auto-Godzamok).', display: ON_OFF('Auto Pantheon') },
     { head: 'Grimoire:' },
     { key: 'towerLimit', hint: 'Stop buying Wizard Towers at set max mana.', display: ON_OFF('Wizard Tower Cap'), extra: num('manaMax', ' max Mana', 'Mana Cap!', 'Set the maximum mana wizard towers should reach (37 recommended).', 0, 1000) },
-    { key: 'autoCasting', hint: 'Smart Grimoire: reads the upcoming Hand of Fate results and decides when to cast, skip a bad one, or double-cast.', display: ON_OFF('Smart Grimoire'),
+    { key: 'autoCasting', hint: 'Smart Grimoire: reads the upcoming Hand of Fate results. Good results are cast as soon as the CpS multiplier reaches the minimum Frenzy setting; bad ones are skipped; two good ones in a row are double-cast.', display: ON_OFF('Smart Grimoire'),
       extra: num('minCpSMult', ' minimum Frenzy', 'Smart Grimoire!', FRENZY_PROMPT, 0, 1e300, 'x') },
     { key: 'autoSugarFrenzy', hint: 'Auto-buy Sugar Frenzy during a double-cast combo of X Frenzy.', display: ON_OFF('Auto Sugar Frenzy'),
       extra: num('minASFMult', ' minimum Frenzy', 'Sugar Frenzy!', 'What CpS multiplier should trigger buying Sugar Frenzy?', 0, 1e300, 'x') },
