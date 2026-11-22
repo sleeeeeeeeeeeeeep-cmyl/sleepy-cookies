@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.2.1 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.2.2 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -22,7 +22,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.2.1';
+  const VERSION = '2.2.2';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -719,11 +719,7 @@
     return [{ id: 0, type: 'santa', name, cost: cumulativeSantaCost(1), delta_cps: 0, base_delta_cps: 0, efficiency: Infinity,
       purchase: { id: 0, name, unlocked: 1, buy: buySanta, getPrice: () => cumulativeSantaCost(1) } }];
   }
-  function buySanta() {
-    Game.specialTab = 'santa';
-    Game.UpgradeSanta();
-    if (Game.santaLevel + 1 >= Game.santaLevels.length) Game.ToggleSpecialMenu();
-  }
+  function buySanta() { withSpecialTab('santa', () => Game.UpgradeSanta()); }
   function defaultPurchase() {
     return { id: 0, type: 'other', name: 'No valid purchases!', cost: Infinity, delta_cps: 0, base_delta_cps: 0, efficiency: Infinity,
       purchase: { id: 0, name: 'No valid purchases!', buy: noop, getPrice: () => Infinity } };
@@ -1064,7 +1060,9 @@
     if (!rec || rec.type === 'other') return false;
     const delay = bestBank(chain.efficiency).cost;
     const isPledge = rec.purchase.name === 'Elder Pledge';
-    if (!(Game.cookies >= delay + rec.cost || isPledge)) return false;
+    // Elder Pledge ignores the bank (FC rule) but still has to be affordable; FC "bought" it even when it
+    // wasn't, which here spun the buy loop for its full 30 ms every tick.
+    if (!(Game.cookies >= (isPledge ? 0 : delay) + rec.cost)) return false;
     if (!(S.pastemode || isFinite(chain.efficiency))) return false;
     const cookiesBefore = Game.cookies;
     const prestigeGain = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned)) - Math.floor(Game.HowMuchPrestige(Game.cookiesReset));
@@ -1078,7 +1076,7 @@
     } else {
       rec.purchase.buy(1);                            // bypasses the confirmation prompts (e.g. One mind)
     }
-    if (Game.cookies === cookiesBefore && !isPledge) { invalidate(); return false; }
+    if (Game.cookies === cookiesBefore) { invalidate(); return false; }
     if (S.trackStats === 5 && rec.type === 'upgrade') saveStats();
     else if (S.trackStats === 6) R.delayPurchaseCount++;
     if (S.purchaseLog) logEvent('Store', 'Autobought ' + rec.purchase.name + ' for ' + B(rec.cost) + ', resulting in ' + B(rec.delta_cps) + ' CPS.');
@@ -1311,6 +1309,7 @@
     const differs = best.lineup.some((id, s) => T.slot[s] !== id && !(id < 0 && isRigidel(T.slot[s])));
     pantheonInfo.text = names.join(' / ') + (differs ? ' (+' + (pantheonInfo.gain * 100).toFixed(1) + '% effective CpS once slotted)' : ' (slotted)');
     // Spend swaps only for a real gain (>1%), or to put Godzamok in place for Auto-Godzamok.
+    if (differs && !wantFixed && pantheonInfo.gain < 0.01) pantheonInfo.text = 'keeping current gods (best: ' + names.join(' / ') + ' is only +' + (pantheonInfo.gain * 100).toFixed(1) + '%)';
     if (!differs || (!wantFixed && pantheonInfo.gain < 0.01)) return;
     const unslotExtras = () => {                     // unslotting is free
       for (let s = 0; s < 3; s++) {
@@ -1329,6 +1328,8 @@
       if (swapIn(id, s)) logEvent('autoPantheon', 'Slotted ' + T.godsById[id].name.split(',')[0] + ' in ' + SLOT_NAMES[s]);
     }
     unslotExtras();                                   // a swap can push the old god into another slot
+    const done = best.lineup.every((id, s) => T.slot[s] === id || (id < 0 && isRigidel(T.slot[s])));
+    pantheonInfo.text = names.join(' / ') + (done ? ' (slotted)' : ' (+' + (pantheonInfo.gain * 100).toFixed(1) + '% once slotted; waiting for worship swaps)');
   }
   // ================================================================== Grimoire
   // Predicts Force the Hand of Fate outcomes by replaying the game's seeded RNG (2.058 order).
@@ -1386,7 +1387,8 @@
     };
   }
   function spellById(key) { const M = grimoire(); return M.spells[key]; }
-  function castable(key) { const M = grimoire(); return M.getSpellCost(spellById(key)) <= M.magicM; }
+  function castable(key) { const M = grimoire(); return M.getSpellCost(spellById(key)) <= M.magicM; }   // max mana is enough
+  function affordable(key) { const M = grimoire(); return M.getSpellCost(spellById(key)) <= M.magic; }  // current mana is enough
   function cast(key, why) { const M = grimoire(); if (M.castSpell(spellById(key))) { logEvent('autoCasting', why || ('Cast ' + spellById(key).name)); invalidate(); return true; } return false; }
   function manaFull() { const M = grimoire(); return (S.towerLimit && M.magic >= M.magicM) || (!S.towerLimit && M.magic >= M.magicM - 1); }
   function buffSecs(name) { const b = Game.hasBuff(name); return b ? b.time / Game.fps : 0; }
@@ -1446,6 +1448,10 @@
     }
     return r;
   }
+  // Cursed Finger stops CpS and pays out per click, so its cookie is skipped (and the cast wasted) unless
+  // something clicks: the auto-clicker, or you when golden cookie auto-clicking is off.
+  function isGood(n) { return GREAT.has(n) && (n !== 'Cursed Finger' || !S.autoGC || clickSpeed() > 0); }
+  const fmtX = (v) => fcBeautify(v, 2);
   function greatWindow(next) {
     if (next === 'Click Frenzy' && (Game.hasBuff('Click frenzy') || Game.hasBuff('Dragonflight'))) return false;  // would only refresh it
     return castMult(next) >= S.minCpSMult;
@@ -1459,7 +1465,7 @@
     wt.sell(combo2.count);
     M.computeMagicM();
     const next = nextSpellName(0);
-    if (GREAT.has(next) || next === 'Sugar Lump') cast('hand of fate', 'Double cast Force the Hand of Fate (' + next + ')');
+    if (isGood(next) || next === 'Sugar Lump') cast('hand of fate', 'Double cast Force the Hand of Fate (' + next + ')');
     else logEvent('autoCasting', 'Second cast would now give ' + next + ', so it was not cast');
     safeBuy(wt, combo2.count);
     if (combo2.autobuy) S.autoBuy = 1;
@@ -1487,29 +1493,31 @@
     }
     const n0 = nextSpellName(0), n1 = nextSpellName(1);
     const waited = full ? Date.now() - grimoireInfo.fullSince : 0;
-    const fate = (why) => { grimoireInfo.fullSince = 0; grimoireInfo.text = 'cast ' + n0; return cast('hand of fate', why || 'Cast Force the Hand of Fate (' + n0 + ') at x' + fcBeautify(castMult(n0)) + ' multiplier'); };
+    const fate = (why) => { grimoireInfo.fullSince = 0; grimoireInfo.text = 'cast ' + n0; return cast('hand of fate', why || 'Cast Force the Hand of Fate (' + n0 + ') at x' + fmtX(castMult(n0)) + ' multiplier'); };
     if (n0 === 'Sugar Lump') { fate('Cast Force the Hand of Fate for a free sugar lump'); return; }
     const waitText = (what) => (n0 === 'Click Frenzy' && (Game.hasBuff('Click frenzy') || Game.hasBuff('Dragonflight')))
       ? 'holding ' + what + ' until the running click buff ends'
-      : 'holding ' + what + ' until x' + fcBeautify(S.minCpSMult) + ' (now x' + fcBeautify(castMult(n0)) + ')';
+      : 'holding ' + what + ' until x' + fmtX(S.minCpSMult) + ' (now x' + fmtX(castMult(n0)) + ')';
     const lvl = Game.Objects['Wizard tower'].level, t = DOUBLE_CAST[lvl];
-    if (full && t && M.magicM >= t[0] && GREAT.has(n0) && GREAT.has(n1) && !(n0 === 'Cursed Finger' && n1 === 'Cursed Finger')) {
+    if (full && t && M.magicM >= t[0] && isGood(n0) && isGood(n1) && !(n0 === 'Cursed Finger' && n1 === 'Cursed Finger')) {
       grimoireInfo.text = waitText(n0 + ' + ' + n1 + ' (double cast)');
       if (greatWindow(n0)) {
         combo2.count = Math.max(0, Game.Objects['Wizard tower'].amount - t[1]);
-        if (fate('Cast first Force the Hand of Fate (' + n0 + ') at x' + fcBeautify(castMult(n0)) + ' multiplier')) combo2.state = 3;
+        if (fate('Cast first Force the Hand of Fate (' + n0 + ') at x' + fmtX(castMult(n0)) + ' multiplier')) combo2.state = 3;
       }
       return;
     }
-    if (GREAT.has(n0) || n0 === 'Lucky') {
+    if (isGood(n0) || n0 === 'Lucky') {
       grimoireInfo.text = waitText(n0);
-      if (greatWindow(n0) || waited > (n0 === 'Lucky' ? 15 : 20) * 60000) fate();
+      if (!greatWindow(n0) && !(waited > (n0 === 'Lucky' ? 15 : 20) * 60000)) return;
+      if (affordable('hand of fate')) fate();
+      else grimoireInfo.text = 'x' + fmtX(castMult(n0)) + ' reached, waiting for mana for ' + n0 + ' (' + Math.floor(M.magic) + '/' + Math.ceil(M.getSpellCost(spellById('hand of fate'))) + ')';
       return;
     }
     if (!full) { grimoireInfo.text = charging + ', next: ' + n0; return; }
     if (n0 === 'Frenzy') { grimoireInfo.text = 'next: Frenzy'; if (buffSecs('Frenzy') < 10) fate(); return; }
     if (n0 === 'Cookie Storm') { fate(); return; }
-    if (BURN.has(n0)) { grimoireInfo.text = 'skipping ' + n0; burn(n0); return; }
+    if (BURN.has(n0) || GREAT.has(n0)) { grimoireInfo.text = 'skipping ' + n0; burn(n0); return; }
     fate();
   }
 
@@ -1519,35 +1527,46 @@
     if (!canSpendLump() || cpsBonus() < S.minASFMult || !craving.unlocked || sf.bought) return;
     if (loanInterest() && S.minLoanMult) return;
     if (combo2.state !== 3) return;
-    sf.buy(1); Game.ConfirmPrompt();
+    if (Game.lumps < 1 || !sf.canBuy()) return;
+    Game.lumps -= 1;                                  // buy(1) skips the lump payment, so pay it here like the game does
+    sf.buy(1);
+    Game.recalculateGains = 1;
     logEvent('autoSugarFrenzy', 'Started a Sugar Frenzy this ascension');
   }
 
   // ================================================================== Dragon
+  // Run fn with the dragon/Santa popup on the given tab, then put the popup back the way the player had it
+  // (the game's own upgrade buttons leave it open, which popped it up mid-game every time the bot used it).
+  function withSpecialTab(tab, fn) {
+    const prevTab = Game.specialTab;
+    const wasOpen = !!prevTab && !!l('specialPopup') && l('specialPopup').className.includes('onScreen');
+    Game.specialTab = tab;
+    try { return fn(); } finally {
+      if (wasOpen) { Game.specialTab = prevTab; Game.ToggleSpecialMenu(1); }
+      else Game.ToggleSpecialMenu(0);
+    }
+  }
   function autoDragonAction() {
     if (!S.autoDragon || !Game.HasUnlocked('A crumbly egg') || Game.dragonLevel > 26 || hasClickBuff()) return;
     if (!Game.Has('A crumbly egg')) { Game.Upgrades['A crumbly egg'].buy(1); logEvent('autoDragon', 'Bought an egg'); }
     if (Game.dragonLevel < Game.dragonLevels.length - 1 && Game.dragonLevels[Game.dragonLevel].cost()) {
-      Game.specialTab = 'dragon';
-      Game.UpgradeDragon();
-      if (Game.dragonLevel + 1 >= Game.dragonLevels.length) Game.ToggleSpecialMenu();
+      withSpecialTab('dragon', () => Game.UpgradeDragon());
       logEvent('autoDragon', 'Upgraded the dragon to level ' + Game.dragonLevel);
       invalidate();
     }
   }
   function petDragonAction() {
-    if (!S.petDragon || !Game.Has('A crumbly egg') || Game.dragonLevel < 4 || !Game.Has('Pet the dragon') || hasClickBuff()) return;
+    // Drops only roll from dragon level 8 ("Dragon of ...") up; below that petting did nothing but growl.
+    if (!S.petDragon || !Game.Has('A crumbly egg') || Game.dragonLevel < 8 || !Game.Has('Pet the dragon') || hasClickBuff()) return;
     Math.seedrandom(Game.seed + '/dragonTime');
     let drops = shuffle(['Dragon scale', 'Dragon claw', 'Dragon fang', 'Dragon teddy bear']);
     Math.seedrandom();
     const drop = drops[Math.floor((new Date().getMinutes() / 60) * drops.length)];
     if (!Game.Has(drop) && !Game.HasUnlocked(drop)) {
-      const prevTab = Game.specialTab;
-      Game.specialTab = 'dragon';
-      Game.ToggleSpecialMenu(1);
-      Game.ClickSpecialPic();
-      Game.ToggleSpecialMenu(0);
-      Game.specialTab = prevTab;
+      const snd = window.PlaySound;
+      window.PlaySound = noop;                        // one pet a second: no click/growl spam
+      try { withSpecialTab('dragon', () => { Game.ToggleSpecialMenu(1); Game.ClickSpecialPic(); }); }
+      finally { window.PlaySound = snd; }
     }
   }
   function autoDragonAuraAction() {
@@ -1580,6 +1599,13 @@
   // ================================================================== Stock market auto-trader (Sleepy extra)
   let lastMarketTick = -1;
   function spareCookies() { return Math.max(0, Game.cookies - delayAmount()); }
+  // Stocks tie cookies up for hours, so the trader only gets what is left after the bank AND the next
+  // purchase; before, it spent the money auto-buy was saving up and stalled CpS growth.
+  function surplusCookies() {
+    const rec = S.autoBuy ? nextPurchase() : null;
+    const next = rec && isFinite(rec.cost) ? rec.cost : 0;
+    return Math.max(0, Game.cookies - delayAmount() - next);
+  }
   function tradeRec(id) { return (D.trades[id] = D.trades[id] || { qty: 0, avg: 0 }); }
   function syncTrade(g, overhead) {
     const t = tradeRec(g.id);
@@ -1618,7 +1644,7 @@
         }
       }
     }
-    let budget = spareCookies() * S.tradeSpendPct / 100;
+    let budget = surplusCookies() * S.tradeSpendPct / 100;
     const buyList = goods.filter((g) => g.last !== 2 && g.val <= M.getRestingVal(g.id) * S.tradeBuyPct / 100 && !(S.tradeUseTrend && (g.mode === 2 || g.mode === 4)))
       .sort((a, b) => a.val / M.getRestingVal(a.id) - b.val / M.getRestingVal(b.id));
     for (const g of buyList) {
@@ -1905,7 +1931,7 @@
     { extras: [num('tradeBuyPct', '% of resting price (buy)', 'Auto-Trader!', 'Buy a stock when its price is at or below this % of its resting price.', 1, 200, '≤ '),
       num('tradeSellPct', '% of resting price (sell)', 'Auto-Trader!', 'Sell when the price reaches this % of its resting price (capped near the market ceiling).', 50, 1000, '≥ '),
       num('tradeMinProfit', '% min profit', 'Auto-Trader!', 'Never sell for less than this % over what the shares cost.', 0, 1000),
-      num('tradeSpendPct', '% of spare cookies per tick', 'Auto-Trader!', 'Spend at most this % of your spare cookies (above the autobuy bank) each market tick.', 1, 100)] },
+      num('tradeSpendPct', '% of spare cookies per tick', 'Auto-Trader!', 'Spend at most this % of your spare cookies (what is left after the autobuy bank and the next purchase) each market tick.', 1, 100)] },
     { head: 'Garden planter (Sleepy extra):', extraHead: true },
     { key: 'autoGarden', hint: 'Plant, weed and harvest the garden automatically.', display: ON_OFF('Auto-Planter') },
     { key: 'gardenMode', hint: 'What the planter works on.', display: ['Planter UNLOCK NEW SEEDS', 'Planter FARM ONE SEED'] },
