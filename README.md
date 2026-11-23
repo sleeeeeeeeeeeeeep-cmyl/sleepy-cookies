@@ -26,11 +26,14 @@ There are three ways to load it; pick one.
 2. Open **[sleepy-cookies.user.js](https://sleeeeeeeeeeeeeep-cmyl.github.io/sleepy-cookies/sleepy-cookies.user.js)** and click **Install**.
 3. Open Cookie Clicker. Sleepy Cookies loads by itself every time, and the userscript manager keeps it up to date.
 
-### 2. Steam version (Steam Workshop)
+### 2. Steam version
 
-Subscribe to **Sleepy Cookies** on the Cookie Clicker Steam Workshop, then turn it on in the game's mod list (in the **Options** menu). The Workshop mod always loads the latest version from this repository.
+1. Download **[SleepyCookies-steam.zip](https://sleeeeeeeeeeeeeep-cmyl.github.io/sleepy-cookies/SleepyCookies-steam.zip)**.
+2. In Steam, right-click Cookie Clicker → **Manage → Browse local files**, then open `resources\app\mods\local`.
+3. Unzip the download there, so you end up with `mods\local\SleepyCookies\info.txt` (plus `main.js` and `thumbnail.png`).
+4. Start the game, open **Options**, turn on **Sleepy Cookies** in the mod list, and restart if the game asks.
 
-Steam achievements are turned off while it's enabled, because it automates the game.
+The mod folder loads the latest version from this repository every time, so you get updates without reinstalling. Steam achievements are turned off while it's enabled, because it automates the game.
 
 ### 3. Console or bookmark (web version, one-off)
 
@@ -168,7 +171,7 @@ These are off while you're typing in a text box.
   - GitHub Pages can take a few minutes to serve the new file.
   - Refresh the game with **Ctrl+F5** and load it again.
   - The version is shown in the menu header.
-- **Steam version:** use the Steam Workshop mod (install option 2). The console line and bookmark only work in the web version.
+- **Steam version:** use the Steam mod folder (install option 2). The console line and bookmark only work in the web version.
 
 ## Credits and license
 
