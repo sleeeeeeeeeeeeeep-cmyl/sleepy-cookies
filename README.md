@@ -10,7 +10,29 @@ Sleepy Cookies is a rebuild of [Frozen Cookies](https://github.com/erbkaiser/Fro
 
 It has no dependencies: it's a single file.
 
-## Load it
+| Combo in progress (Frenzy + Click Frenzy + Building Special) | The Sleepy Cookies menu |
+| --- | --- |
+| ![Sleepy Cookies running a combo](docs/combo.jpg) | ![Sleepy Cookies menu](docs/menu.jpg) |
+
+> **Heads-up:** Sleepy Cookies plays the game for you (buying, clicking, casting, trading, planting). Some players consider that cheating — use it if that's how you like to play.
+
+## Install
+
+There are three ways to load it; pick one.
+
+### 1. Userscript (web version, loads automatically)
+
+1. Install a userscript manager: [Tampermonkey](https://www.tampermonkey.net/) or [Violentmonkey](https://violentmonkey.github.io/).
+2. Open **[sleepy-cookies.user.js](https://sleeeeeeeeeeeeeep-cmyl.github.io/sleepy-cookies/sleepy-cookies.user.js)** and click **Install**.
+3. Open Cookie Clicker. Sleepy Cookies loads by itself every time, and the userscript manager keeps it up to date.
+
+### 2. Steam version (Steam Workshop)
+
+Subscribe to **Sleepy Cookies** on the Cookie Clicker Steam Workshop, then turn it on in the game's mod list (in the **Options** menu). The Workshop mod always loads the latest version from this repository.
+
+Steam achievements are turned off while it's enabled, because it automates the game.
+
+### 3. Console or bookmark (web version, one-off)
 
 Open Cookie Clicker, press **F12 → Console**, paste this and press Enter:
 
@@ -146,8 +168,12 @@ These are off while you're typing in a text box.
   - GitHub Pages can take a few minutes to serve the new file.
   - Refresh the game with **Ctrl+F5** and load it again.
   - The version is shown in the menu header.
-- **Steam version:** this loader is for the web version only.
+- **Steam version:** use the Steam Workshop mod (install option 2). The console line and bookmark only work in the web version.
 
-## Credits
+## Credits and license
 
-Based on Frozen Cookies by Icehawk78, erbkaiser and contributors.
+Based on [Frozen Cookies](https://github.com/Icehawk78/FrozenCookies) by Icehawk78, erbkaiser and contributors.
+
+Frozen Cookies is released under **GPL-3.0-or-later**, so Sleepy Cookies is too: you may use, change and share it, but anything you distribute that's based on it has to stay under the same license, with its source available. See [LICENSE](LICENSE).
+
+Bug reports and ideas are welcome in [Issues](https://github.com/sleeeeeeeeeeeeeep-cmyl/sleepy-cookies/issues).

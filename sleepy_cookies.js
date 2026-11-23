@@ -1,10 +1,14 @@
 /*!
- * Sleepy Cookies v2.4.0 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.4.1 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
  * Icehawk78 & contributors), with bugs fixed, plus a stock-market auto-trader and a garden
  * auto-planter that Frozen Cookies doesn't have.
+ *
+ * License: GPL-3.0-or-later, the same license Frozen Cookies is released under
+ * (Icehawk78/FrozenCookies package.json). See the LICENSE file in the repository.
+ * Copyright (C) 2026 sleeeeeeeeeeeeeep-cmyl; portions (C) Icehawk78, erbkaiser and Frozen Cookies contributors.
  *
  * HOW TO USE: open Cookie Clicker, wait for it to load, press F12 -> Console,
  * paste this whole script, press Enter. Paste again to reload it.
@@ -22,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.4.0';
+  const VERSION = '2.4.1';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -938,9 +942,11 @@
       let mult = 1.5;
       if (Game.Has('Residual luck')) for (const n of Game.goldenCookieUpgrades) if (Game.Has(n)) mult += 0.1;
       const gain = (mult - 1) * (Game.cookiesPs + Game.computedMouseCps * (R.clickRateNow || 0)) * clickBuffSecs();
-      if (gain > off.getPrice() && Game.cookies >= off.getPrice()) { off.buy(1); R.gsByBot = 1; }
+      if (gain > off.getPrice() && Game.cookies >= off.getPrice()) { off.buy(1); D.gsByBot = 1; save(); }
     } else if (!hasClickBuff()) {
-      if (on.unlocked && !on.bought && R.gsByBot) { Game.recalculateGains = 1; on.buy(1); R.gsByBot = 0; }
+      // remembered across reloads, so a refresh mid-buff can't leave golden cookies switched off
+      if (on.unlocked && !on.bought && D.gsByBot) { Game.recalculateGains = 1; on.buy(1); D.gsByBot = 0; save(); }
+      else if (D.gsByBot && !(on.unlocked && !on.bought)) { D.gsByBot = 0; save(); }   // you switched it off yourself
     }
   }
   // Seconds left on the shortest click buff (Devastation itself doesn't count).
@@ -1139,6 +1145,9 @@
     const reset = Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned + wrinklerValue() + chocolateValue());
     const go = S.autoAscend === 1 ? S.HCAscendAmount > 0 && reset - Game.prestige >= S.HCAscendAmount : reset >= Game.prestige * 2;
     if (!go) return;
+    R.ascendWanted = Date.now();
+    const Bk = market();
+    if (Bk && Bk.goodsById.some((g) => g.stock > 0 && g.last === 1)) return;   // wait for the next market tick (<1 min)
     R.ascendPending = true;
     logEvent('AutoAscend', 'Ascending at ' + B(reset) + ' prestige');
     Game.ClosePrompt();
@@ -1801,6 +1810,8 @@
     }
     // buy: expected return after the broker fee. Money auto-buy is saving for is only used when the stock is
     // expected to grow faster than the next purchase pays back (late game, where purchases take days to pay off).
+    // about to auto-ascend: shares bought now couldn't be sold before the reset
+    if (R.ascendWanted && Date.now() - R.ascendWanted < 120000) { tradeInfo.text = 'not buying: about to ascend'; if (changed) { save(); invalidate(); } return; }
     const rec = S.autoBuy ? nextPurchase() : null;
     const buildRate = rec && rec.cost > 0 && rec.delta_cps > 0 ? rec.delta_cps / rec.cost : 0;   // per second
     let spare = spareCookies() * S.tradeSpendPct / 100, surplus = Math.min(spare, surplusCookies() * S.tradeSpendPct / 100);
