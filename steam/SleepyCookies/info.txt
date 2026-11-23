@@ -1,0 +1,11 @@
+{
+	"Name": "Sleepy Cookies",
+	"ID": "sleepy cookies",
+	"Author": "sleeeeeeeeeeeeeep-cmyl",
+	"Description": "Automation add-on based on Frozen Cookies: optimal auto-buy, spell prediction with combo chaining, auto Pantheon, stock trader and garden planter. Settings: the Sleepy Cookies button in the middle panel.",
+	"ModVersion": 241,
+	"GameVersion": 2.058,
+	"Date": "23/11/2026",
+	"Dependencies": [],
+	"Disabled": 1
+}
