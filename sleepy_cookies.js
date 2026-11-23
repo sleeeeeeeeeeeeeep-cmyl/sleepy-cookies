@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.2.2 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.2.4 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -22,7 +22,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.2.2';
+  const VERSION = '2.2.4';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -602,7 +602,9 @@
     Game.CalculateGains();
   }
   function recalcGains() { Game.recalculateGains = 1; Game.CalculateGains(); }
-  const WRATH_EFFECT = { 'One mind': 1, 'Communal brainsweep': 2, 'Elder Pact': 3, 'Elder Pledge': 0, 'Elder Covenant': 0 };
+  const WRATH_EFFECT = { 'One mind': 1, 'Communal brainsweep': 2, 'Elder Pact': 3, 'Elder Pledge': 0, 'Elder Covenant': 0, 'Revoke Elder Covenant': -1 };
+  // The wrath level the grandmapocalypse climbs back to without a pledge or covenant (game: UpdateGrandmapocalypse).
+  function naturalWrath() { return (Game.Has('One mind') ? 1 : 0) + (Game.Has('Communal brainsweep') ? 1 : 0) + (Game.Has('Elder Pact') ? 1 : 0); }
   function applyUpgrade(u, undo) {
     if (!u.unlocked) {
       const p = prereqOf(u);
@@ -623,8 +625,12 @@
     const counts = Game.CountsAsUpgradeOwned(u.pool);
     if (counts) Game.UpgradesOwned++;
     undo.push(() => { u.bought = 0; if (counts) Game.UpgradesOwned--; });
+    if (u.name === 'Revoke Elder Covenant') {      // revoking removes the covenant's -5% (FC simulated it as a no-op)
+      const cov = Game.Upgrades['Elder Covenant'];
+      if (cov.bought) { cov.bought = 0; undo.push(() => { cov.bought = 1; }); }
+    }
     if (hasOwn(WRATH_EFFECT, u.name)) {
-      const old = Game.elderWrath; Game.elderWrath = WRATH_EFFECT[u.name];
+      const old = Game.elderWrath; Game.elderWrath = WRATH_EFFECT[u.name] < 0 ? naturalWrath() : WRATH_EFFECT[u.name];
       undo.push(() => { Game.elderWrath = old; });
     }
     if (u.season) { const old = Game.season; Game.season = u.season; undo.push(() => { Game.season = old; }); }
@@ -656,6 +662,7 @@
     const currentBank = bestBank(0).cost;
     const baseOrig = baseCps();
     const cpsOrig = effectiveCps(Math.min(Game.cookies, currentBank));
+    const cpsSame = effectiveCps(currentBank);       // same bank as the simulation, so the delta is only the purchase
     const out = [];
     for (const b of Game.ObjectsById) {
       if (blocked.has(b.id)) continue;
@@ -663,7 +670,7 @@
       let baseNew, cpsNew;
       try { recalcGains(); baseNew = baseCps(); cpsNew = effectiveCps(currentBank); }
       finally { b.amount -= 1; b.bought -= 1; Game.BuildingsOwned -= 1; simUndoAchievements(); recalcGains(); simUndoAchievements(); }
-      const delta = cpsNew - cpsOrig;
+      const delta = cpsNew - cpsSame;
       out.push({ id: b.id, type: 'building', purchase: b, name: b.name, cost: b.getPrice(),
         delta_cps: delta, base_delta_cps: baseNew - baseOrig, efficiency: purchaseEfficiency(b.getPrice(), delta, cpsOrig) });
     }
@@ -677,6 +684,7 @@
     const currentBank = bestBank(0).cost;
     const baseOrig = baseCps();
     const cpsOrig = effectiveCps(Math.min(Game.cookies, currentBank));
+    const cpsSame = effectiveCps(currentBank);
     const discounts = totalDiscount() + totalDiscount(true);
     const cands = [];
     for (const u of upgradesList()) {
@@ -703,7 +711,9 @@
         cpsNew = effectiveCps(currentBank);
         if (discounts !== totalDiscount() + totalDiscount(true)) priceReduction = checkPrices(u);
       } finally { runUndo(undo); simUndoAchievements(); recalcGains(); simUndoAchievements(); }
-      const delta = cpsNew - cpsOrig;
+      // FC subtracted CpS measured with the bank it actually had, so while saving up, every candidate
+      // (even a no-op like Revoke Elder Covenant) looked like a gain. Measure both sides with the same bank.
+      const delta = cpsNew - cpsSame;
       let eff;
       if (u.season && S.defaultSeasonToggle && u.season === SEASON_KEYS[S.defaultSeason]) eff = cost / baseOrig;
       else if (priceReduction > cost) eff = 1;
@@ -919,22 +929,57 @@
   function canSpendLump() { return S.sugarBakingGuard ? Game.lumps > 100 : Game.lumps > 0; }
 
   // ---- golden switch, Godzamok, bank office, brokers, loans
+  // The switch costs an hour of CpS each time it's turned on, so only flip it when the boost over the rest of
+  // the click buff is worth more than that (FC flipped it on every click buff, even with nothing clicking).
   function autoGSAction() {
     if (!S.autoGS) return;
     const off = Game.Upgrades['Golden switch [off]'], on = Game.Upgrades['Golden switch [on]'];
-    if (hasClickBuff() && !Game.hasBuff('Cursed finger')) { if (off.unlocked && !off.bought) off.buy(1); }
-    else if (!hasClickBuff()) { if (on.unlocked && !on.bought) { Game.recalculateGains = 1; on.buy(1); } }
+    if (hasClickBuff() && !Game.hasBuff('Cursed finger')) {
+      if (!off.unlocked || off.bought) return;
+      let mult = 1.5;
+      if (Game.Has('Residual luck')) for (const n of Game.goldenCookieUpgrades) if (Game.Has(n)) mult += 0.1;
+      const gain = (mult - 1) * (Game.cookiesPs + Game.computedMouseCps * (R.clickRateNow || 0)) * clickBuffSecs();
+      if (gain > off.getPrice() && Game.cookies >= off.getPrice()) { off.buy(1); R.gsByBot = 1; }
+    } else if (!hasClickBuff()) {
+      if (on.unlocked && !on.bought && R.gsByBot) { Game.recalculateGains = 1; on.buy(1); R.gsByBot = 0; }
+    }
   }
+  // Seconds left on the shortest click buff (Devastation itself doesn't count).
+  function clickBuffSecs() {
+    let t = Infinity;
+    for (const k in Game.buffs) {
+      const b = Game.buffs[k];
+      if (b.name !== 'Devastation' && typeof b.multClick !== 'undefined' && b.multClick > 1) t = Math.min(t, b.time / Game.fps);
+    }
+    return isFinite(t) ? t : 0;
+  }
+  // Selling and rebuying costs 75% of what the buildings are worth, so Godzamok only fires when the extra clicking
+  // during Devastation pays for it. FC fired on every click buff (twice in one Click Frenzy, the second time for its
+  // last 3 seconds) and refilled mines/factories up to the limit instead of to what you had.
   function autoGodzamokAction() {
     if (!S.autoGodzamok || !pantheon() || !Game.hasGod('ruin')) return;
     if (Game.hasBuff('Devastation') || Game.hasBuff('Cursed finger') || !hasClickBuff()) return;
     const mine = Game.Objects.Mine, fac = Game.Objects.Factory;
     const nMine = mine.amount, nFac = fac.amount;
     if (nMine + nFac === 0) return;
+    const rate = R.clickRateNow || 0, secs = Math.min(10, clickBuffSecs());
+    if (!rate || secs < 5) return;
+    const per = [0, 0.01, 0.005, 0.0025][Game.hasGod('ruin')] || 0;
+    const refund = mine.getReverseSumPrice(nMine) + fac.getReverseSumPrice(nFac);
+    const sellMult = mine.getSellMultiplier();
+    const loss = sellMult > 0 ? refund * (1 / sellMult - 1) : Infinity;
+    const gain = (nMine + nFac) * per * Game.computedMouseCps * rate * secs;
+    if (gain < loss * 1.25) {
+      if (!R.godzamokSkipNote || Date.now() - R.godzamokSkipNote > 600000) {
+        R.godzamokSkipNote = Date.now();
+        logEvent('AutoGodzamok', 'Skipped: selling would cost ' + B(loss) + ' but only gain about ' + B(gain));
+      }
+      return;
+    }
     mine.sell(nMine); fac.sell(nFac);
-    const bm = safeBuy(mine, S.mineLimit ? S.mineMax : nMine);
-    const bf = safeBuy(fac, S.factoryLimit ? S.factoryMax : nFac);
-    logEvent('AutoGodzamok', 'Sold and rebought ' + bm + ' mines and ' + bf + ' factories');
+    const bm = safeBuy(mine, Math.min(nMine, S.mineLimit ? S.mineMax : nMine));
+    const bf = safeBuy(fac, Math.min(nFac, S.factoryLimit ? S.factoryMax : nFac));
+    logEvent('AutoGodzamok', 'Sold and rebought ' + bm + ' mines and ' + bf + ' factories (worth about ' + B(gain) + ' extra clicking)');
     invalidate();
   }
   function autoBankAction() {
@@ -1060,6 +1105,9 @@
     if (!rec || rec.type === 'other') return false;
     const delay = bestBank(chain.efficiency).cost;
     const isPledge = rec.purchase.name === 'Elder Pledge';
+    // Never flip the covenant back within 10 minutes of the bot changing it (guards against any toggle loop).
+    const COV_PAIR = { 'Elder Covenant': 'Revoke Elder Covenant', 'Revoke Elder Covenant': 'Elder Covenant' };
+    if (COV_PAIR[rec.purchase.name] && R.covenantFlip && R.covenantFlip.name === COV_PAIR[rec.purchase.name] && Date.now() - R.covenantFlip.t < 600000) return false;
     // Elder Pledge ignores the bank (FC rule) but still has to be affordable; FC "bought" it even when it
     // wasn't, which here spun the buy loop for its full 30 ms every tick.
     if (!(Game.cookies >= (isPledge ? 0 : delay) + rec.cost)) return false;
@@ -1077,6 +1125,7 @@
       rec.purchase.buy(1);                            // bypasses the confirmation prompts (e.g. One mind)
     }
     if (Game.cookies === cookiesBefore) { invalidate(); return false; }
+    if (COV_PAIR[rec.purchase.name]) { R.covenantFlip = { name: rec.purchase.name, t: Date.now() }; logEvent('Autobuy', 'Bought ' + rec.purchase.name); }
     if (S.trackStats === 5 && rec.type === 'upgrade') saveStats();
     else if (S.trackStats === 6) R.delayPurchaseCount++;
     if (S.purchaseLog) logEvent('Store', 'Autobought ' + rec.purchase.name + ' for ' + B(rec.cost) + ', resulting in ' + B(rec.delta_cps) + ' CPS.');
@@ -1104,10 +1153,10 @@
     if (cur === R.lastGcState) return;
     if (R.lastGcState !== 1 && cur === 1) {
       logEvent('GC', 'Frenzy ended, cookie production x1');
-      if (R.hcGain) { logEvent('HC', 'Won ' + R.hcGain + ' heavenly chips during Frenzy. Rate: ' + (R.hcGain * 1000) / (Date.now() - R.hcGainTime) + ' HC/s.'); R.hcGainTime = Date.now(); R.hcGain = 0; }
+      if (R.hcGain) { logEvent('HC', 'Won ' + fcBeautify(R.hcGain, 2) + ' heavenly chips during Frenzy. Rate: ' + fcBeautify((R.hcGain * 1000) / (Date.now() - R.hcGainTime), 3) + ' HC/s.'); R.hcGainTime = Date.now(); R.hcGain = 0; }
     } else {
       if (R.lastGcState !== 1) logEvent('GC', 'Previous Frenzy x' + B(R.lastGcState) + ' interrupted.');
-      else if (R.hcGain) { logEvent('HC', 'Won ' + R.hcGain + ' heavenly chips outside of Frenzy.'); R.hcGainTime = Date.now(); R.hcGain = 0; }
+      else if (R.hcGain) { logEvent('HC', 'Won ' + fcBeautify(R.hcGain, 2) + ' heavenly chips outside of Frenzy.'); R.hcGainTime = Date.now(); R.hcGain = 0; }
       logEvent('GC', 'Starting ' + (hasClickBuff() ? 'Clicking ' : '') + 'Frenzy x' + B(cur));
     }
     const key = String(R.lastGcState);
@@ -1790,8 +1839,19 @@
       if (seed) for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) grid[y][x] = seed.key;
     }
     if (S.gardenAutoSoil) {
-      if (mode === 'unlock') setSoil(M, M.parent.amount >= 300 ? 'woodchips' : M.parent.amount >= 50 ? 'fertilizer' : 'dirt');
-      else setSoil(M, M.parent.amount >= 100 ? 'clay' : 'dirt');
+      // Mutations only come from mature parents, so grow them on fast Fertilizer and switch to Wood chips
+      // (3x mutations) once they're all grown. Harvest crops grow on Fertilizer; passive ones sit in Clay.
+      const n = M.parent.amount;
+      const fast = n >= 50 ? 'fertilizer' : 'dirt';
+      if (mode === 'unlock') {
+        let ready = true;
+        for (let y = b.y0; y < b.y1 && ready; y++) for (let x = b.x0; x < b.x1; x++) {
+          const want = grid[y][x]; if (!want || !M.isTileUnlocked(x, y)) continue;
+          const t = M.plot[y][x];
+          if (!(t[0] > 0 && M.plantsById[t[0] - 1].key === want && t[1] >= M.plants[want].mature)) { ready = false; break; }
+        }
+        setSoil(M, ready && n >= 300 ? 'woodchips' : fast);
+      } else setSoil(M, seed && seed.onHarvest ? fast : n >= 100 ? 'clay' : 'dirt');
     }
     const spare = spareCookies();
     let spent = 0;
@@ -1845,7 +1905,7 @@
 #scEfficiencyTable th:first-child,#scEfficiencyTable td:first-child{text-align:left;}
 #scEfficiencyTable tr.sc-divider td{border-top:2px dashed #999;}
 #scInfobox{position:absolute;left:0;bottom:0;pointer-events:none;z-index:6}
-#scInfoText{position:absolute;left:8px;bottom:8px;z-index:6;pointer-events:none;font:11px Tahoma,Arial,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000;background:rgba(0,0,0,.35);padding:4px 6px;border-radius:4px;max-width:260px}`;
+#scInfoText{position:absolute;left:8px;bottom:40px;z-index:6;pointer-events:none;font:11px Tahoma,Arial,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000;background:rgba(0,0,0,.35);padding:4px 6px;border-radius:4px;max-width:260px}`;
 
   let styleEl = null, scButton = null, showGraphs = false, menuRoot = null;
   function el(tag, attrs, text) {
@@ -1890,8 +1950,8 @@
     { key: 'autoSL', hint: 'Auto-harvest sugar lumps (optionally with Rigidel).', display: ['Autoharvest SL OFF', 'Autoharvest SL ON', 'Autoharvest SL ON + AUTO RIGIDEL'] },
     { key: 'dragonsCurve', hint: "Swap in Dragon's Curve (and Reality Bending) for lump harvest.", display: ["Auto-Dragon's Curve OFF", "Auto-Dragon's Curve ON", "Auto-Dragon's Curve ON + REALITY BENDING"] },
     { key: 'sugarBakingGuard', hint: "Don't spend lumps below 101 (keep Sugar Baking bonus).", display: ON_OFF('Sugar Baking Guard') },
-    { key: 'autoGS', hint: 'Auto-toggle Golden Switch for click buffs.', display: ON_OFF('Auto-Golden Switch') },
-    { key: 'autoGodzamok', hint: 'Auto-sell mines/factories for Godzamok during click buffs.', display: ON_OFF('Auto-Godzamok') },
+    { key: 'autoGS', hint: 'Turn on the Golden Switch during click buffs when the boost is worth its 1-hour cost; turns it back off afterwards (only if it turned it on).', display: ON_OFF('Auto-Golden Switch') },
+    { key: 'autoGodzamok', hint: 'Sell and rebuy mines/factories for Godzamok during click buffs, only when the extra clicking is worth more than the rebuy cost.', display: ON_OFF('Auto-Godzamok') },
     { key: 'autoBank', hint: 'Auto-upgrade bank office.', display: ON_OFF('Auto-Banking') },
     { key: 'autoBroker', hint: 'Auto-hire stock brokers.', display: ON_OFF('Auto-Broker') },
     { key: 'autoLoan', hint: 'Auto-take loans during click frenzies.', display: ['Auto-Loans OFF', 'Take loans 1 and 2', 'Take all 3 loans'],

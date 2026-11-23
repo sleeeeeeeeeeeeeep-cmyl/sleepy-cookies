@@ -62,7 +62,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
   - stocks
   - the garden
   - the Chocolate egg, opened in time to count towards your chips
-- **Golden switch, Godzamok and Sugar Frenzy:** turns on the Golden switch and sells mines and factories for Godzamok during click buffs, and buys Sugar Frenzy during big combos. Sugar Frenzy costs its sugar lump like normal.
+- **Golden switch, Godzamok and Sugar Frenzy:** during click buffs, turns on the Golden switch and sells and rebuys mines and factories for Godzamok, but only when the extra clicking is worth more than the cost. It also buys Sugar Frenzy during big combos, paying its sugar lump like normal. A Golden switch you turned on yourself is left alone.
 - **Stock market:** upgrades your bank office, hires brokers, and takes loans during huge combos.
 
 ### Smart Grimoire
@@ -93,7 +93,8 @@ Upgrades and pets the dragon (for its drops), sets your two chosen auras, and ca
 ### Garden planter (Sleepy extra)
 - **Unlock new seeds:** picks the parent plants and layout most likely to mutate into a seed you don't have yet, then harvests the new plant once it's mature.
 - **Farm one seed:** fills the plot with one seed and harvests payout plants such as Bakeberry when they're ripe.
-- Clears weeds and unwanted mutations, and switches soil automatically.
+- Clears weeds and unwanted mutations.
+- Switches soil automatically: Fertilizer while the parent plants grow, then Wood chips (3× mutations) once they're mature.
 
 ### Info and display
 - An info section with everything Frozen Cookies shows: next purchase, bank, golden cookie timers, heavenly chip rate, frenzy times and stat graphs.
