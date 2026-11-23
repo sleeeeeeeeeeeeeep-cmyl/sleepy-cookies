@@ -33,7 +33,7 @@ There are three ways to load it; pick one.
 3. Unzip the download there, so you end up with `mods\local\SleepyCookies\info.txt` (plus `main.js` and `thumbnail.png`).
 4. Start the game, open **Options**, turn on **Sleepy Cookies** in the mod list, and restart if the game asks.
 
-The mod folder loads the latest version from this repository every time, so you get updates without reinstalling. Steam achievements are turned off while it's enabled, because it automates the game.
+The mod folder loads the latest version from this repository every time, so you get updates without reinstalling. Steam achievements stay on while it's enabled.
 
 ### 3. Console or bookmark (web version, one-off)
 
@@ -82,6 +82,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
   - can slot Rigidel to harvest early
   - can swap in Dragon's Curve / Reality Bending at harvest time
   - can keep 100 lumps for Sugar baking
+- **Lucky 7s ascend:** Lucky digit, Lucky number and Lucky payout only appear when your prestige level contains 1, 2 and 4 sevens. In this mode the add-on ascends the moment your new prestige level would have the 7s the next one needs, buys it, and reincarnates. It skips the usual cash-in so the number doesn't change.
 - **Auto-ascend:** ascends at a set number of heavenly chips, or when your prestige would double. Before ascending it cashes in:
   - wrinklers
   - stocks

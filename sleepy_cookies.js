@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.4.1 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.5.0 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -26,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.4.1';
+  const VERSION = '2.5.0';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -66,7 +66,7 @@
     { sec: 'Other automation', key: 'autoBulk', type: 'choice', def: 0, label: 'Bulk-buy mode after ascending', labels: ['Off', 'x10', 'x100'] },
     { sec: 'Other automation', key: 'autoBuyAll', type: 'check', def: 0, label: 'Buy all upgrades until a heavenly chip is earned' },
     { sec: 'Other automation', key: 'autoAscendToggle', type: 'check', def: 0, label: 'Auto-ascend (skips the upgrade screen!)' },
-    { sec: 'Other automation', key: 'autoAscend', type: 'choice', def: 0, label: 'Auto-ascend when', labels: ['Off', 'Set chip amount reached', 'Prestige doubles'] },
+    { sec: 'Other automation', key: 'autoAscend', type: 'choice', def: 0, label: 'Auto-ascend when', labels: ['Off', 'Set chip amount reached', 'Prestige doubles', 'Lucky 7s (for Lucky digit/number/payout)'] },
     { sec: 'Other automation', key: 'HCAscendAmount', type: 'number', def: 0, min: 0, max: 1e300, label: 'New heavenly chips to ascend at' },
     { sec: 'Other automation', key: 'comboAscend', type: 'check', def: 0, label: 'Allow ascending during combos (frenzy >= minimum)' },
     { sec: 'Other automation', key: 'minCpSMult', type: 'number', def: 7, min: 0, max: 1e300, label: 'Minimum frenzy multiplier (combos, spells, ascend)' },
@@ -1139,8 +1139,46 @@
   }
 
   // ---- auto-ascend
+  // ---- Lucky 7s: Lucky digit / number / payout only show when the prestige level contains 1 / 2 / 4 sevens
+  // (main.js showIf: (Game.prestige+'').split('7').length-1). The level after ascending is
+  // floor(HowMuchPrestige(cookiesReset + cookiesEarned)) and nothing is earned during the ascend animation,
+  // so ascending the moment that number has enough 7s gives exactly that level.
+  const LUCKY = [['Lucky digit', 1], ['Lucky number', 2], ['Lucky payout', 4]];
+  const sevens = (n) => String(n).split('7').length - 1;
+  function nextLucky() {
+    for (const [name, need] of LUCKY) {
+      const u = Game.Upgrades[name];
+      if (!u || u.bought) continue;
+      const parentsOk = (u.parents || []).every((p) => p && p.bought);
+      return { u, need, parentsOk };
+    }
+    return null;
+  }
+  function buyLuckyUpgrades() {
+    for (const [name] of LUCKY) {
+      const u = Game.Upgrades[name];
+      if (!u || u.bought || !(u.parents || []).every((p) => p && p.bought) || (u.showIf && !u.showIf())) continue;
+      if (Game.heavenlyChips >= u.getPrice() && u.buy(1)) { logEvent('AutoAscend', 'Bought ' + name); Game.Notify('Sleepy Cookies', 'Bought <b>' + name + '</b>.', [24, 15]); }
+    }
+  }
+  function luckySevensAscend() {
+    const t = nextLucky();
+    if (!t) { R.sevensText = 'you own all three Lucky upgrades: nothing left to wait for'; return; }
+    if (!t.parentsOk) { R.sevensText = t.u.name + ' first needs ' + t.u.parents.filter((p) => !p.bought).map((p) => p.name).join(', '); return; }
+    const p = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned));
+    const k = sevens(p);
+    R.sevensText = 'next: ' + t.u.name + ' needs ' + t.need + ' sevens; level now would be ' + p + ' (' + k + ')';
+    if (!(p > Game.prestige && k >= t.need)) return;
+    R.ascendPending = true;
+    R.skipCashOut = true;                             // popping wrinklers / the egg would add cookies and change the number
+    logEvent('AutoAscend', 'Ascending at prestige level ' + p + ' (' + k + ' sevens) for ' + t.u.name);
+    Game.ClosePrompt();
+    Game.Ascend(1);
+    setTimeout(() => { buyLuckyUpgrades(); Game.ClosePrompt(); Game.Reincarnate(1); R.ascendPending = false; }, 10000);
+  }
   function autoAscendAction() {
     if (!S.autoAscendToggle || !S.autoAscend || R.ascendPending || Game.OnAscend || Game.AscendTimer || Game.prestige <= 0) return;
+    if (S.autoAscend === 3) { luckySevensAscend(); return; }   // the right number only lasts moments: no combo check
     if (!(S.comboAscend || cpsBonus() < S.minCpSMult)) return;
     const reset = Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned + wrinklerValue() + chocolateValue());
     const go = S.autoAscend === 1 ? S.HCAscendAmount > 0 && reset - Game.prestige >= S.HCAscendAmount : reset >= Game.prestige * 2;
@@ -1253,7 +1291,8 @@
   }
   const origAscend = Game.Ascend;
   function fcAscend(bypass) {
-    if (bypass && !Game.OnAscend && !Game.AscendTimer) cashOut();
+    if (bypass && !Game.OnAscend && !Game.AscendTimer && !R.skipCashOut) cashOut();
+    R.skipCashOut = false;
     return origAscend.apply(this, arguments);
   }
   const origReset = Game.Reset;
@@ -2193,7 +2232,7 @@
     { key: 'autoBulk', hint: 'Set bulk buy after ascension.', display: ['Auto Bulkbuy OFF', 'Auto Bulkbuy x10', 'Auto Bulkbuy x100'] },
     { key: 'autoBuyAll', hint: 'Auto-buy all upgrades until a chip is earned.', display: ON_OFF('Auto Buy All Upgrades') },
     { key: 'autoAscendToggle', hint: 'Auto-ascend at target chips (⚠️ skips upgrade screen).', display: ON_OFF('Auto Ascend') },
-    { key: 'autoAscend', hint: 'Choose auto-ascend method.', display: ['Auto-ascend OFF', 'Auto-ascend at SET amount', 'Auto-ascend when prestige is DOUBLED'],
+    { key: 'autoAscend', hint: 'Choose auto-ascend method. Lucky 7s: ascend the moment your new prestige level has the 7s the next Lucky upgrade needs (1, 2 or 4), then buy it.', display: ['Auto-ascend OFF', 'Auto-ascend at SET amount', 'Auto-ascend when prestige is DOUBLED', 'Auto-ascend for LUCKY 7s'],
       extra: num('HCAscendAmount', ' heavenly chips', 'Autoascending!', 'How many heavenly chips do you want to auto-ascend at?', 0, 1e300) },
     { key: 'comboAscend', hint: 'Allow auto-ascend while a Frenzy of at least X is running.', display: ON_OFF('Ascend during combo'),
       extra: num('minCpSMult', ' minimum Frenzy', 'Autoascending!', FRENZY_PROMPT, 0, 1e300, 'x') },
@@ -2433,6 +2472,7 @@
     if (grimoire()) h += listing('Next Hand of Fate spells', [0, 1, 2, 3].map(nextSpellName).join(', '));
     if (S.autoCasting) h += listing('Smart Grimoire', esc(grimoireInfo.text));
     if (S.autoWorshipToggle) h += listing('Auto Pantheon', esc(pantheonInfo.text));
+    if (S.autoAscendToggle && S.autoAscend === 3) h += listing('Lucky 7s', esc(R.sevensText || 'waiting'));
     const Mk = market();
     if (S.autoTrade && Mk) {
       let held = 0, val = 0;
