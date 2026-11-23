@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.2.4 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.4.0 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -22,7 +22,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.2.4';
+  const VERSION = '2.4.0';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -66,6 +66,7 @@
     { sec: 'Other automation', key: 'HCAscendAmount', type: 'number', def: 0, min: 0, max: 1e300, label: 'New heavenly chips to ascend at' },
     { sec: 'Other automation', key: 'comboAscend', type: 'check', def: 0, label: 'Allow ascending during combos (frenzy >= minimum)' },
     { sec: 'Other automation', key: 'minCpSMult', type: 'number', def: 7, min: 0, max: 1e300, label: 'Minimum frenzy multiplier (combos, spells, ascend)' },
+    { sec: 'Other automation', key: 'comboChain', type: 'check', def: 1, label: 'Chain combos (Stretch Time / skip to the next good result)' },
     { sec: 'Other automation', key: 'autoWrinkler', type: 'choice', def: 0, label: 'Auto-pop wrinklers', labels: ['Off', 'Efficiently', 'Instantly'] },
     { sec: 'Other automation', key: 'shinyPop', type: 'check', def: 0, label: 'Protect shiny wrinklers (blocks Elder Pledge)' },
     { sec: 'Other automation', key: 'autoSL', type: 'choice', def: 1, label: 'Harvest ripe sugar lumps', labels: ['Off', 'On', 'On + auto Rigidel'] },
@@ -121,9 +122,7 @@
     { sec: 'Display', key: 'recommendedSettings', type: 'button', label: 'Apply recommended settings' },
     // ---- Sleepy extras (not in Frozen Cookies)
     { sec: 'Stock market trader (extra)', key: 'autoTrade', type: 'check', def: 0, label: 'Auto-trade stocks' },
-    { sec: 'Stock market trader (extra)', key: 'tradeBuyPct', type: 'number', def: 60, min: 1, max: 200, label: 'Buy at <= % of resting price' },
-    { sec: 'Stock market trader (extra)', key: 'tradeSellPct', type: 'number', def: 150, min: 50, max: 1000, label: 'Sell at >= % of resting price' },
-    { sec: 'Stock market trader (extra)', key: 'tradeMinProfit', type: 'number', def: 20, min: 0, max: 1000, label: 'Min profit over buy cost %' },
+    { sec: 'Stock market trader (extra)', key: 'tradeMinProfit', type: 'number', def: 15, min: 1, max: 1000, label: 'Min expected profit %' },
     { sec: 'Stock market trader (extra)', key: 'tradeSpendPct', type: 'number', def: 50, min: 1, max: 100, label: 'Max % of spare cookies per tick' },
     { sec: 'Stock market trader (extra)', key: 'tradeUseTrend', type: 'check', def: 1, label: 'Use hidden trend (peeks at game data)' },
     { sec: 'Garden planter (extra)', key: 'autoGarden', type: 'check', def: 0, label: 'Auto-plant garden' },
@@ -143,7 +142,7 @@
     autoAscendToggle: 0, autoAscend: 2, comboAscend: 0, HCAscendAmount: 0, autoBulk: 2, autoBuyAll: 1, autoWrinkler: 1, shinyPop: 0,
     autoSL: 2, dragonsCurve: 2, sugarBakingGuard: 1, autoGS: 1, autoGodzamok: 1, autoBank: 1, autoBroker: 1, autoLoan: 1, minLoanMult: 777,
     autoWorshipToggle: 1,
-    towerLimit: 1, manaMax: 37, autoCasting: 1, minCpSMult: 7, autoSugarFrenzy: 0, minASFMult: 7777,
+    towerLimit: 1, manaMax: 37, autoCasting: 1, minCpSMult: 7, comboChain: 1, autoSugarFrenzy: 0, minASFMult: 7777,
     autoDragon: 1, petDragon: 1, autoDragonToggle: 1, autoDragonAura0: 3, autoDragonAura1: 15, autoDragonOrbs: 0, orbLimit: 0, orbMax: 200,
     defaultSeasonToggle: 1, defaultSeason: 1, freeSeason: 1, autoEaster: 1, autoHalloween: 1,
     holdManBank: 0, manBankMins: 0, holdSEBank: 0, setHarvestBankPlant: 0, setHarvestBankType: 3, maxSpecials: 1,
@@ -1521,9 +1520,45 @@
     combo2.count = 0; combo2.state = 0; combo2.autobuy = 0;
     invalidate();
   }
+  // Whether the next cast of any spell succeeds is fixed by the same seed, so it can be predicted too.
+  function predictWin(key, offset) {
+    const M = grimoire(), sp = spellById(key);
+    if (!M || !sp) return false;
+    const fc = M.getFailChance(sp);
+    Math.seedrandom(Game.seed + '/' + (M.spellsCastTotal + (offset || 0)));
+    try { return !sp.fail || Math.random() < 1 - fc; } finally { Math.seedrandom(); }
+  }
+  const hasBuffs = () => Object.keys(Game.buffs).length > 0;
+  // Skip a bad result with a cheap spell. While a debuff is running, use Stretch Time when it's going to
+  // backfire (a backfire shortens every buff by 20%, debuffs included).
   function burn(next) {
-    if (castable('stretch time') && cpsBonus() < 1 && (next === 'Clot' || next === 'Ruin Cookies')) cast('stretch time', 'Cast Stretch Time to skip a ' + next + ' backfire');
-    else if (castable("haggler's charm")) cast("haggler's charm", "Cast Haggler's Charm to skip " + next);
+    if (cpsBonus() < 1 && affordable('stretch time') && !predictWin('stretch time')) cast('stretch time', 'Cast Stretch Time (predicted backfire) to cut the debuff short and skip ' + next);
+    else if (affordable("haggler's charm")) cast("haggler's charm", "Cast Haggler's Charm to skip " + next);
+  }
+  // ---- combo chaining: while a boost stack is running, keep adding to it.
+  //  * a good result is one cast away: skip the bad one in front of it right now (with Stretch Time when that
+  //    will succeed, so the skip also lengthens the running buffs), then cast the good one next second.
+  //  * nothing good is coming and a click buff is stacked on a CpS boost: Stretch Time (+10% on every buff),
+  //    but only when it's predicted to succeed.
+  function comboChain(M, n0, n1) {
+    if (!S.comboChain || isGood(n0) || n0 === 'Lucky' || n0 === 'Sugar Lump') return false;   // never spend a good result
+    const stack = cpsBonus() >= S.minCpSMult || (hasClickBuff() && cpsBonus() >= 1);
+    if (!stack) return false;
+    const fateCost = M.getSpellCost(spellById('hand of fate'));
+    const stretchOk = predictWin('stretch time') && hasBuffs();
+    const skipKey = stretchOk ? 'stretch time' : "haggler's charm";
+    const skipCost = M.getSpellCost(spellById(skipKey));
+    if (isGood(n1) && greatWindow(n1) && M.magic >= skipCost + fateCost) {
+      grimoireInfo.text = 'combo: skipping ' + n0 + ' to reach ' + n1;
+      return !!cast(skipKey, (stretchOk ? 'Combo: Stretch Time (buffs +10%)' : "Combo: Haggler's Charm") + ' to skip ' + n0 + ' and reach ' + n1);
+    }
+    // Pure stretching only with mana to spare: mana regenerates with the square root of what's left, so
+    // draining it would delay the next Hand of Fate by far more than the 10% it adds.
+    if (stretchOk && hasClickBuff() && cpsBonus() >= S.minCpSMult && M.magic - M.getSpellCost(spellById('stretch time')) >= fateCost) {
+      grimoireInfo.text = 'combo: stretching buffs';
+      return !!cast('stretch time', 'Combo: Stretch Time to lengthen ' + Object.keys(Game.buffs).length + ' buffs by 10% (skips ' + n0 + ')');
+    }
+    return false;
   }
   function smartGrimoireAction() {
     const M = grimoire();
@@ -1556,6 +1591,8 @@
       }
       return;
     }
+    const castNow = n0 === 'Cookie Storm' || ((isGood(n0) || n0 === 'Lucky') && greatWindow(n0) && affordable('hand of fate'));
+    if (!castNow && comboChain(M, n0, n1)) return;
     if (isGood(n0) || n0 === 'Lucky') {
       grimoireInfo.text = waitText(n0);
       if (!greatWindow(n0) && !(waited > (n0 === 'Lucky' ? 15 : 20) * 60000)) return;
@@ -1575,7 +1612,6 @@
     const sf = Game.UpgradesById[452], craving = Game.UpgradesById[450];
     if (!canSpendLump() || cpsBonus() < S.minASFMult || !craving.unlocked || sf.bought) return;
     if (loanInterest() && S.minLoanMult) return;
-    if (combo2.state !== 3) return;
     if (Game.lumps < 1 || !sf.canBuy()) return;
     Game.lumps -= 1;                                  // buy(1) skips the lump payment, so pay it here like the game does
     sf.buy(1);
@@ -1646,7 +1682,6 @@
   }
 
   // ================================================================== Stock market auto-trader (Sleepy extra)
-  let lastMarketTick = -1;
   function spareCookies() { return Math.max(0, Game.cookies - delayAmount()); }
   // Stocks tie cookies up for hours, so the trader only gets what is left after the bank AND the next
   // purchase; before, it spent the money auto-buy was saving up and stalled CpS growth.
@@ -1667,48 +1702,133 @@
     if (t.qty <= 0) { t.qty = 0; t.avg = 0; }
     return t;
   }
+  // ---- Trader v2: Monte Carlo of the game's own market model (minigameMarket.js M.tick).
+  // For each stock it simulates a few hundred futures from the current price/trend/mode and finds the
+  // sell target with the best expected (time-discounted) payout. That gives an expected return for buying
+  // now and a "continuation value" for shares already held, so it buys when the odds are good and sells
+  // as soon as the current price beats what waiting is expected to bring. Stock prices are in "seconds of
+  // your highest raw CpS", so shares keep their value as your CpS grows.
+  const TRADE_PATHS = 120, TRADE_TICKS = 240, TRADE_RHO = 0.001;   // 4 h horizon, ~6%/h time discount
+  const T_MULTS = [1.03, 1.06, 1.1, 1.15, 1.2, 1.3, 1.4, 1.5, 1.65, 1.8, 2, 2.25, 2.5, 3, 3.5, 4, 5];
+  const MODE_CHOICES = [0, 1, 1, 2, 2, 3, 4, 5];
+  const tradeInfo = { text: 'off', queue: [], evals: {}, tick: -1 };
+  function simulateGood(M, g) {
+    const R = Math.random, known = !!S.tradeUseTrend;
+    const rest = M.getRestingVal(g.id), cap = 100 + (Game.Objects.Bank.level - 1) * 3;
+    const dragon = Game.auraMult('Supreme Intellect');
+    const p0 = g.val, Ts = T_MULTS.map((m) => p0 * m), K = Ts.length;
+    const sum = new Float64Array(K), tim = new Float64Array(K);
+    for (let n = 0; n < TRADE_PATHS; n++) {
+      let val = p0, d, mode, dur;
+      if (known) { d = g.d; mode = g.mode; dur = g.dur; }
+      else { d = g.vals.length > 1 ? g.vals[0] - g.vals[1] : 0; mode = MODE_CHOICES[Math.floor(R() * 8)]; dur = Math.floor(10 + R() * (690 - 200 * dragon)); }
+      let next = 0, disc = 1, t = 1;
+      for (; t <= TRADE_TICKS && next < K; t++) {
+        let globD = 0; if (R() < 0.1 + 0.1 * dragon) globD = (R() - 0.5) * 2; const globP = R();
+        d *= 0.97 + 0.01 * dragon;
+        if (mode === 0) { d *= 0.95; d += 0.05 * (R() - 0.5); }
+        else if (mode === 1) { d *= 0.99; d += 0.05 * (R() - 0.1); }
+        else if (mode === 2) { d *= 0.99; d -= 0.05 * (R() - 0.1); }
+        else if (mode === 3) { d += 0.15 * (R() - 0.1); val += R() * 5; }
+        else if (mode === 4) { d -= 0.15 * (R() - 0.1); val -= R() * 5; }
+        else if (mode === 5) d += 0.3 * (R() - 0.5);
+        val += (rest - val) * 0.01;
+        if (globD !== 0 && R() < globP) { val -= (1 + d * Math.pow(R(), 3) * 7) * globD; val -= globD * (1 + Math.pow(R(), 3) * 7); d += globD * (1 + R() * 4); dur = 0; }
+        val += Math.pow((R() - 0.5) * 2, 11) * 3;
+        d += 0.1 * (R() - 0.5);
+        if (R() < 0.15) val += (R() - 0.5) * 3;
+        if (R() < 0.03) val += (R() - 0.5) * (10 + 10 * dragon);
+        if (R() < 0.1) d += (R() - 0.5) * (0.3 + 0.2 * dragon);
+        if (mode === 5) { if (R() < 0.5) val += (R() - 0.5) * 10; if (R() < 0.2) d = (R() - 0.5) * (2 + 6 * dragon); }
+        if (mode === 3 && R() < 0.3) { d += (R() - 0.5) * 0.1; val += (R() - 0.7) * 10; }
+        if (mode === 3 && R() < 0.03) mode = 4;
+        if (mode === 4 && R() < 0.3) { d += (R() - 0.5) * 0.1; val += (R() - 0.3) * 10; }
+        if (val > cap && d > 0) d *= 0.9;
+        val += d;
+        if (val < 5) val += (5 - val) * 0.5;
+        if (val < 5 && d < 0) d *= 0.95;
+        if (val < 1) val = 1;
+        if (--dur <= 0) {
+          dur = Math.floor(10 + R() * (690 - 200 * dragon));
+          if (R() < dragon && R() < 0.5) mode = 5;
+          else if (R() < 0.7 && (mode === 3 || mode === 4)) mode = 5;
+          else mode = MODE_CHOICES[Math.floor(R() * 8)];
+        }
+        disc *= 1 - TRADE_RHO;
+        while (next < K && val >= Ts[next]) { sum[next] += val * disc; tim[next] += t; next++; }
+      }
+      for (let k = next; k < K; k++) { sum[k] += val * disc; tim[k] += t - 1; }   // unsold at the horizon: sell then
+    }
+    let best = null;
+    for (let k = 0; k < K; k++) {
+      const ev = sum[k] / TRADE_PATHS;
+      if (!best || ev > best.ev) best = { ev, target: Ts[k], ticks: Math.max(1, tim[k] / TRADE_PATHS) };
+    }
+    return best;
+  }
   function traderAction() {
     const M = market();
-    if (!S.autoTrade || !M || !M.goodsById) return;
-    if (M.ticks === lastMarketTick) return;
-    lastMarketTick = M.ticks;
+    if (!S.autoTrade) { tradeInfo.text = 'off'; return; }
+    if (!M || !M.goodsById) { tradeInfo.text = 'no stock market yet'; return; }
+    if (M.ticks !== tradeInfo.tick) {                  // new prices: re-evaluate every stock, one per scheduler tick
+      tradeInfo.tick = M.ticks;
+      tradeInfo.queue = M.goodsById.filter((g) => g.active).map((g) => g.id);
+      tradeInfo.evals = {};
+    }
+    if (tradeInfo.queue.length) {
+      const id = tradeInfo.queue.shift();
+      tradeInfo.evals[id] = simulateGood(M, M.goodsById[id]);
+      if (tradeInfo.queue.length) return;
+      traderDecide(M);
+    }
+  }
+  function traderDecide(M) {
     const unit = Game.cookiesPsRawHighest;
     if (!(unit > 0)) return;
     const overhead = 1 + 0.01 * (20 * Math.pow(0.95, M.brokers));
-    const softCap = 100 + (Game.Objects.Bank.level - 1) * 3;
-    const goods = M.goodsById.filter((g) => g.active);
+    const goods = M.goodsById.filter((g) => g.active && tradeInfo.evals[g.id]);
     let changed = false;
+    // sell: the price now beats the expected value of holding on
     for (const g of goods) {
-      const t = syncTrade(g, overhead);
-      if (g.stock <= 0 || g.last === 1) continue;
-      const rest = M.getRestingVal(g.id);
-      const sellAt = Math.max(t.avg * (1 + S.tradeMinProfit / 100), Math.max(rest, Math.min(rest * S.tradeSellPct / 100, softCap * 0.97)));
-      const rising = S.tradeUseTrend && (g.mode === 1 || g.mode === 3);
-      if (g.val >= sellAt && !(rising && g.val < rest * 3)) {
-        const n = g.stock, gain = (g.val - t.avg) * n;
-        if (M.sellGood(g.id, n)) {
-          D.tradeProfit += gain;
-          logEvent('Trader', 'Sold ' + n + ' ' + g.symbol + ' @ $' + g.val.toFixed(2) + ' (' + (gain >= 0 ? '+' : '') + '$' + B(gain) + ')');
-          t.qty = 0; t.avg = 0; changed = true;
-        }
+      const t = syncTrade(g, overhead), e = tradeInfo.evals[g.id];
+      if (g.stock <= 0 || g.last === 1 || g.val < e.ev) continue;
+      const n = g.stock, gain = (g.val - t.avg) * n;
+      if (M.sellGood(g.id, n)) {
+        D.tradeProfit += gain;
+        logEvent('Trader', 'Sold ' + n + ' ' + g.symbol + ' @ $' + g.val.toFixed(2) + ' (' + (gain >= 0 ? '+' : '-') + '$' + B(Math.abs(gain)) + ')');
+        t.qty = 0; t.avg = 0; changed = true;
       }
     }
-    let budget = surplusCookies() * S.tradeSpendPct / 100;
-    const buyList = goods.filter((g) => g.last !== 2 && g.val <= M.getRestingVal(g.id) * S.tradeBuyPct / 100 && !(S.tradeUseTrend && (g.mode === 2 || g.mode === 4)))
-      .sort((a, b) => a.val / M.getRestingVal(a.id) - b.val / M.getRestingVal(b.id));
-    for (const g of buyList) {
-      const unitCost = g.val * overhead * unit;
-      const n = Math.min(M.getGoodMaxStock(g) - g.stock, Math.floor(budget / unitCost));
+    // buy: expected return after the broker fee. Money auto-buy is saving for is only used when the stock is
+    // expected to grow faster than the next purchase pays back (late game, where purchases take days to pay off).
+    const rec = S.autoBuy ? nextPurchase() : null;
+    const buildRate = rec && rec.cost > 0 && rec.delta_cps > 0 ? rec.delta_cps / rec.cost : 0;   // per second
+    let spare = spareCookies() * S.tradeSpendPct / 100, surplus = Math.min(spare, surplusCookies() * S.tradeSpendPct / 100);
+    const cands = [];
+    for (const g of goods) {
+      const e = tradeInfo.evals[g.id], ret = e.ev / (g.val * overhead) - 1;
+      if (g.last === 2 || ret < S.tradeMinProfit / 100 || M.getGoodMaxStock(g) - g.stock <= 0) continue;
+      cands.push({ g, e, ret, rate: ret / (e.ticks * 60) });
+    }
+    cands.sort((a, b) => b.rate - a.rate);
+    for (const c of cands) {
+      const g = c.g, unitCost = g.val * overhead * unit;
+      const pool = c.rate > buildRate ? spare : surplus;
+      const n = Math.min(M.getGoodMaxStock(g) - g.stock, Math.floor(pool / unitCost));
       if (n <= 0) continue;
       const t = syncTrade(g, overhead);
       if (M.buyGood(g.id, n)) {
-        budget -= n * unitCost;
+        const spent = n * unitCost;
+        spare -= spent; surplus = Math.max(0, surplus - spent);
         t.avg = (t.avg * t.qty + g.val * overhead * n) / (t.qty + n);
         t.qty += n;
-        logEvent('Trader', 'Bought ' + n + ' ' + g.symbol + ' @ $' + g.val.toFixed(2));
+        logEvent('Trader', 'Bought ' + n + ' ' + g.symbol + ' @ $' + g.val.toFixed(2) + ' (expect +' + Math.round(c.ret * 100) + '%, sell near $' + c.e.target.toFixed(0) + ' in ~' + timeDisplay(c.e.ticks * 60) + ')');
         changed = true;
       }
     }
+    const best = cands[0];
+    tradeInfo.text = best ? 'best buy ' + best.g.symbol + ' @ $' + best.g.val.toFixed(2) + ' (+' + Math.round(best.ret * 100) + '% expected)'
+      : 'waiting: no stock is expected to make +' + S.tradeMinProfit + '% right now';
     if (changed) { save(); invalidate(); }
   }
 
@@ -1752,6 +1872,23 @@
     out.push(g);
     return out;
   }
+  // Chance per garden tick that an empty tile becomes `target`. Every possible mutation rolls on its own and
+  // the game then picks one of the winners at random (minigameGarden.js M.logic), so the other candidates
+  // (e.g. Baker's wheat spreading at 20%) eat into the target's odds: P = p_t * E[1 / (1 + other winners)].
+  function targetChance(M, counts, target) {
+    const muts = mutsFor(M, counts);
+    let pt = 0; const others = [];
+    for (const m of muts) { if (m[0] === target) pt = 1 - (1 - pt) * (1 - m[1]); else others.push(m[1]); }
+    if (!pt) return 0;
+    let dist = [1];                                    // distribution of how many other mutations also succeed
+    for (const q of others) {
+      const nd = new Array(dist.length + 1).fill(0);
+      for (let k = 0; k < dist.length; k++) { nd[k] += dist[k] * (1 - q); nd[k + 1] += dist[k] * q; }
+      dist = nd;
+    }
+    let e = 0; for (let k = 0; k < dist.length; k++) e += dist[k] / (k + 1);
+    return pt * e;
+  }
   function scoreLayout(M, b, grid, target) {
     let score = 0, slots = 0;
     for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) {
@@ -1765,12 +1902,35 @@
         if (k) counts[k] = (counts[k] || 0) + 1;
       }
       if (!Object.keys(counts).length) continue;
-      let p = 0;
-      for (const m of mutsFor(M, counts)) if (m[0] === target) p += m[1];
+      const p = targetChance(M, counts, target);
       if (p > 0) { score += p; slots++; }
     }
     return { score, slots };
   }
+  // Improve a layout tile by tile (each tile tries empty / parent A / parent B) until nothing helps.
+  function refineLayout(M, b, grid, A, Bk, target) {
+    const opts = A === Bk ? [null, A] : [null, A, Bk];
+    let best = scoreLayout(M, b, grid, target).score;
+    for (let pass = 0; pass < 4; pass++) {
+      let improved = false;
+      for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) {
+        const cur = grid[y][x];
+        for (const o of opts) {
+          if (o === cur) continue;
+          grid[y][x] = o;
+          const sc = scoreLayout(M, b, grid, target).score;
+          if (sc > best * 1.0001) { best = sc; improved = true; break; }
+          grid[y][x] = cur;
+        }
+      }
+      if (!improved) break;
+    }
+    return grid;
+  }
+  // Average garden ticks for a plant to mature (age grows by ageTick + random(ageTickR) per tick).
+  const ticksToMature = (p) => Math.ceil(p.mature / (p.ageTick + p.ageTickR / 2));
+  function soilMinutes(M, key) { const so = M.soils[key]; return so && M.parent.amount >= so.req ? so.tick : M.soils.dirt.tick; }
+  // Pick the seed that should unlock soonest: parents growing + waiting for the mutation + the new plant growing.
   function planUnlock(M, b) {
     mutsMemo = new Map();
     const sowable = M.plantsById.filter((p) => p.unlocked && p.plantable);
@@ -1786,29 +1946,105 @@
     };
     for (let i = 0; i < sowable.length; i++) {
       const A = sowable[i].key;
-      for (const n of [2, 4, 5, 8]) add(A, A, { [A]: n });
+      for (const n of [1, 2, 4, 5, 8]) add(A, A, { [A]: n });
       for (let j = i + 1; j < sowable.length; j++) { const Bk = sowable[j].key; add(A, Bk, { [A]: 1, [Bk]: 1 }); add(A, Bk, { [A]: 3, [Bk]: 3 }); }
     }
+    const grow = soilMinutes(M, 'fertilizer');
+    const mutMin = M.parent.amount >= 300 ? 5 / 3 : soilMinutes(M, 'fertilizer');   // wood chips: 3 rolls per 5-minute tick
     let best = null;
-    for (const target in combos) for (const [A, Bk] of combos[target]) for (const grid of layouts(b, A, Bk)) {
-      const r = scoreLayout(M, b, grid, target);
-      if (!r.slots) continue;
-      const cost = M.getCost(M.plants[A]) + M.getCost(M.plants[Bk]);
-      if (!best || r.score > best.score * 1.0001 || (Math.abs(r.score - best.score) <= best.score * 1e-4 && cost < best.cost)) best = { target, A, B: Bk, grid, score: r.score, slots: r.slots, cost };
+    for (const target in combos) {
+      let bestT = null;
+      for (const [A, Bk] of combos[target]) {
+        let g0 = null, s0 = 0;
+        for (const g of layouts(b, A, Bk)) { const r = scoreLayout(M, b, g, target); if (r.slots && r.score > s0) { s0 = r.score; g0 = g; } }
+        if (!g0 || (bestT && s0 < bestT.score * 0.5)) continue;
+        const grid = refineLayout(M, b, g0, A, Bk, target);
+        const rr = scoreLayout(M, b, grid, target);
+        const cost = M.getCost(M.plants[A]) + M.getCost(M.plants[Bk]);
+        if (!bestT || rr.score > bestT.score * 1.0001 || (Math.abs(rr.score - bestT.score) <= bestT.score * 1e-4 && cost < bestT.cost)) bestT = { target, A, B: Bk, grid, score: rr.score, slots: rr.slots, cost };
+      }
+      if (!bestT) continue;
+      const tp = M.plants[target];
+      bestT.minutes = Math.max(ticksToMature(M.plants[bestT.A]), ticksToMature(M.plants[bestT.B])) * grow + mutMin / bestT.score + ticksToMature(tp) * grow;
+      if (!best || bestT.minutes < best.minutes) best = bestT;
     }
     const weed = M.plants.meddleweed;
     if (weed && weed.unlocked && weed.plantable && (locked.has('brownMold') || locked.has('crumbspore'))) {
       const grid = emptyGrid(); let n = 0;
       for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) { grid[y][x] = 'meddleweed'; n++; }
-      if (!best || n * 0.015 > best.score) best = { target: locked.has('brownMold') ? 'brownMold' : 'crumbspore', A: 'meddleweed', B: 'meddleweed', grid, score: n * 0.015, slots: n, spores: true };
+      // uprooting meddleweed drops a spore with chance 0.2*age/100; it's pulled just before it would die of age
+      const ticks = Math.ceil(84 / (weed.ageTick + weed.ageTickR / 2)), cycles = 1 / (1 - Math.pow(1 - 0.17, n));
+      const minutes = cycles * ticks * grow + ticksToMature(M.plants.brownMold) * grow;
+      if (!best || minutes < best.minutes) best = { target: locked.has('brownMold') ? 'brownMold' : 'crumbspore', A: 'meddleweed', B: 'meddleweed', grid, score: n * 0.2, slots: n, spores: true, minutes };
     }
     return best;
   }
-  function farmSeed(M) {
-    if (S.gardenSeed !== 'auto') { const p = M.plants[S.gardenSeed]; if (p && p.unlocked && p.plantable) return p; }
-    for (const k of ['bakeberry', 'bakerWheat']) if (M.plants[k] && M.plants[k].unlocked) return M.plants[k];
-    return null;
+  // ---- farm mode: pick the seed (and soil) worth the most cookies per second right now.
+  // Passive effects are measured exactly by filling the plot with mature plants in a simulation and
+  // recomputing CpS (golden cookie, milk and clicking effects included); harvest payouts use the game's
+  // own formulas (e.g. Bakeberry: 3% of bank, at most 30 minutes of CpS).
+  const HARVEST_PAY = { bakeberry: [0.03, 1800], chocoroot: [0.03, 180], whiteChocoroot: [0.03, 180], queenbeet: [0.04, 3600], duketater: [0.08, 7200] };
+  let farmPick = null, farmPickAt = 0;
+  function evaluateFarm(M, b) {
+    const tiles = [];
+    for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) if (M.isTileUnlocked(x, y)) tiles.push([x, y]);
+    const savedPlot = M.plot.map((r) => r.map((t) => t.slice())), savedSoil = M.soil;
+    const bank = Math.min(Game.cookies, bestBank(0).cost) || Game.cookies;
+    const soils = ['dirt', 'fertilizer', 'clay'].filter((k) => M.parent.amount >= M.soils[k].req);
+    const out = [];
+    simBegin();
+    try {
+      const measure = (key, soil) => {
+        for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) M.plot[y][x] = [0, 0];
+        if (key) { const p = M.plants[key]; for (const [x, y] of tiles) M.plot[y][x] = [p.id + 1, p.mature]; }
+        M.soil = M.soils[soil].id;
+        M.computeBoostPlot(); M.computeEffs(); recalcGains();
+        return effectiveCps(bank);
+      };
+      const base = measure(null, 'dirt');
+      for (const p of M.plantsById) {
+        if (!p.unlocked || !p.plantable) continue;
+        const pay = HARVEST_PAY[p.key];
+        for (const soil of soils) {
+          const passive = measure(p.key, soil) - base;
+          const tickSec = M.soils[soil].tick * 60, grow = ticksToMature(p) * tickSec;
+          const cost = M.getCost(p) * tiles.length;
+          let rate;
+          if (pay) {
+            const payout = Math.min(Game.cookies * pay[0], Game.cookiesPs * pay[1]) * tiles.length;
+            rate = (payout - cost) / grow + passive * 0.28;           // harvested at maturity; ~28% effect while growing
+          } else {
+            const life = Math.ceil(100 / (p.ageTick + p.ageTickR / 2)) * tickSec, f = Math.max(0, 1 - grow / life);
+            rate = passive * (f + (1 - f) * 0.28) - cost / life;      // lives out its life; full effect once mature
+          }
+          out.push({ key: p.key, soil, rate, harvest: !!pay });
+        }
+      }
+    } finally {
+      for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) M.plot[y][x] = savedPlot[y][x];
+      M.soil = savedSoil;
+      M.computeBoostPlot(); M.computeEffs();
+      simEnd();
+    }
+    out.sort((a, b2) => b2.rate - a.rate);
+    return out;
   }
+  function farmChoice(M, b) {
+    if (S.gardenSeed !== 'auto') {
+      const p = M.plants[S.gardenSeed];
+      if (p && p.unlocked && p.plantable) return { seed: p, soil: HARVEST_PAY[p.key] ? 'fertilizer' : 'clay', harvest: !!HARVEST_PAY[p.key] };
+    }
+    if (!farmPick || Date.now() - farmPickAt > 300000) {
+      const list = evaluateFarm(M, b);
+      farmPickAt = Date.now();
+      const top = list.find((o) => o.rate > 0);
+      const old = farmPick && farmPick.seed.key;
+      farmPick = top ? { seed: M.plants[top.key], soil: top.soil, harvest: top.harvest, rate: top.rate } : null;
+      if (farmPick && farmPick.seed.key !== old) logEvent('Garden', 'Farming ' + farmPick.seed.name + ' on ' + M.soils[farmPick.soil].name + ' (about +' + B(farmPick.rate) + ' cookies/s)');
+    }
+    return farmPick;
+  }
+  function farmSeed(M) { const c = farmChoice(M, gardenBounds(M)); return c ? c.seed : null; }
   function setSoil(M, key) {
     const soil = M.soils[key];
     if (!soil || M.soil === soil.id || M.nextSoil > Date.now() || M.parent.amount < soil.req || M.freeze) return;
@@ -1833,8 +2069,10 @@
       plan = gardenPlan;
       if (plan) grid = plan.grid; else mode = 'farm';
     }
+    let farm = null;
     if (mode === 'farm') {
-      seed = farmSeed(M);
+      farm = farmChoice(M, b);
+      seed = farm ? farm.seed : null;
       grid = emptyGrid();
       if (seed) for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) grid[y][x] = seed.key;
     }
@@ -1844,14 +2082,16 @@
       const n = M.parent.amount;
       const fast = n >= 50 ? 'fertilizer' : 'dirt';
       if (mode === 'unlock') {
-        let ready = true;
+        let ready = true, sprout = false;
+        for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) { const t = M.plot[y][x]; if (t[0] > 0 && !M.plantsById[t[0] - 1].unlocked) sprout = true; }
         for (let y = b.y0; y < b.y1 && ready; y++) for (let x = b.x0; x < b.x1; x++) {
           const want = grid[y][x]; if (!want || !M.isTileUnlocked(x, y)) continue;
           const t = M.plot[y][x];
           if (!(t[0] > 0 && M.plantsById[t[0] - 1].key === want && t[1] >= M.plants[want].mature)) { ready = false; break; }
         }
-        setSoil(M, ready && n >= 300 ? 'woodchips' : fast);
-      } else setSoil(M, seed && seed.onHarvest ? fast : n >= 100 ? 'clay' : 'dirt');
+        // a new seed is already growing: no more mutations needed, grow it fast
+        setSoil(M, ready && !sprout && n >= 300 ? 'woodchips' : fast);
+      } else if (farm) setSoil(M, farm.soil);
     }
     const spare = spareCookies();
     let spent = 0;
@@ -1862,8 +2102,9 @@
         const p = M.plantsById[tile[0] - 1], age = tile[1];
         if (!p.unlocked) { if (age >= p.mature) { M.harvest(x, y); logEvent('Garden', 'Unlocked ' + p.name + ' seed!'); } continue; }
         if (p.key === want) {
-          if (plan && plan.spores && age >= 80) M.harvest(x, y);
-          else if (mode === 'farm' && S.gardenHarvestMature && p.onHarvest && age >= p.mature) M.harvest(x, y);
+          if (plan && plan.spores && age >= 100 - p.ageTick - p.ageTickR) M.harvest(x, y);
+          // only plants that pay out when harvested; passive ones (Baker's wheat...) live out their life
+          else if (mode === 'farm' && S.gardenHarvestMature && HARVEST_PAY[p.key] && age >= p.mature) M.harvest(x, y);
           continue;
         }
         M.harvest(x, y);
@@ -1875,8 +2116,8 @@
       const cost = M.getCost(p);
       if (spare - spent >= cost && M.useTool(p.id, x, y)) spent += cost;
     }
-    if (mode === 'unlock' && plan) gardenStatus = 'hunting ' + M.plants[plan.target].name + ' (' + plan.slots + ' slots)';
-    else if (seed) gardenStatus = 'farming ' + seed.name + (S.gardenMode === 0 ? ' (nothing left to unlock)' : '');
+    if (mode === 'unlock' && plan) gardenStatus = 'hunting ' + M.plants[plan.target].name + ' (' + plan.slots + ' slots, ~' + timeDisplay(plan.minutes * 60) + ' expected)';
+    else if (seed) gardenStatus = 'farming ' + seed.name + (farm && farm.rate ? ' (about +' + B(farm.rate) + ' cookies/s)' : '') + (S.gardenMode === 0 ? ' (nothing left to unlock)' : '');
     else gardenStatus = 'no seed to plant';
   }
 
@@ -1962,7 +2203,8 @@
     { key: 'towerLimit', hint: 'Stop buying Wizard Towers at set max mana.', display: ON_OFF('Wizard Tower Cap'), extra: num('manaMax', ' max Mana', 'Mana Cap!', 'Set the maximum mana wizard towers should reach (37 recommended).', 0, 1000) },
     { key: 'autoCasting', hint: 'Smart Grimoire: reads the upcoming Hand of Fate results. Good results are cast as soon as the CpS multiplier reaches the minimum Frenzy setting; bad ones are skipped; two good ones in a row are double-cast.', display: ON_OFF('Smart Grimoire'),
       extra: num('minCpSMult', ' minimum Frenzy', 'Smart Grimoire!', FRENZY_PROMPT, 0, 1e300, 'x') },
-    { key: 'autoSugarFrenzy', hint: 'Auto-buy Sugar Frenzy during a double-cast combo of X Frenzy.', display: ON_OFF('Auto Sugar Frenzy'),
+    { key: 'comboChain', hint: 'While a boost stack is running, skip a bad result to reach a good one right behind it, and use Stretch Time (only when it will succeed) to lengthen Frenzy + click-buff stacks.', display: ON_OFF('Combo Chaining') },
+    { key: 'autoSugarFrenzy', hint: 'Buy Sugar Frenzy (once per ascension, costs 1 lump) the first time your CpS multiplier reaches X.', display: ON_OFF('Auto Sugar Frenzy'),
       extra: num('minASFMult', ' minimum Frenzy', 'Sugar Frenzy!', 'What CpS multiplier should trigger buying Sugar Frenzy?', 0, 1e300, 'x') },
     { head: 'Dragon:' },
     { key: 'autoDragon', hint: 'Auto-upgrade dragon.', display: ON_OFF('Dragon Upgrading') },
@@ -1986,18 +2228,16 @@
     { key: 'setHarvestBankType', hint: 'Increase bank for plant harvest during CpS buffs.', display: ['Harvesting during NO CpS MULTIPLIER', 'Harvesting during FRENZY', 'Harvesting during BUILDING SPECIAL', 'Harvesting during FRENZY + BUILDING SPECIAL'],
       extra: num('maxSpecials', ' Building specials', 'Harvest Bank!', 'How many building specials should the bank plan for? (1-20)', 1, 20) },
     { head: 'Stock market trader (Sleepy extra):', extraHead: true },
-    { key: 'autoTrade', hint: 'Buy stocks well below their resting price, sell well above it.', display: ON_OFF('Auto-Trader') },
+    { key: 'autoTrade', hint: "Simulates each stock's future with the game's own market rules; buys when the expected profit is high and sells when the price beats what waiting is expected to bring.", display: ON_OFF('Auto-Trader') },
     { key: 'tradeUseTrend', hint: "Use the market's hidden price trend (peeks at game data).", display: ON_OFF('Hidden Trend') },
-    { extras: [num('tradeBuyPct', '% of resting price (buy)', 'Auto-Trader!', 'Buy a stock when its price is at or below this % of its resting price.', 1, 200, '≤ '),
-      num('tradeSellPct', '% of resting price (sell)', 'Auto-Trader!', 'Sell when the price reaches this % of its resting price (capped near the market ceiling).', 50, 1000, '≥ '),
-      num('tradeMinProfit', '% min profit', 'Auto-Trader!', 'Never sell for less than this % over what the shares cost.', 0, 1000),
-      num('tradeSpendPct', '% of spare cookies per tick', 'Auto-Trader!', 'Spend at most this % of your spare cookies (what is left after the autobuy bank and the next purchase) each market tick.', 1, 100)] },
+    { extras: [num('tradeMinProfit', '% min expected profit', 'Auto-Trader!', 'Only buy a stock when its expected profit (after the broker fee) is at least this %.', 1, 1000),
+      num('tradeSpendPct', '% of spare cookies per tick', 'Auto-Trader!', 'Spend at most this % of your spare cookies each market tick. Cookies saved for the next purchase are only used when the stock is expected to grow faster than that purchase pays back.', 1, 100)] },
     { head: 'Garden planter (Sleepy extra):', extraHead: true },
     { key: 'autoGarden', hint: 'Plant, weed and harvest the garden automatically.', display: ON_OFF('Auto-Planter') },
     { key: 'gardenMode', hint: 'What the planter works on.', display: ['Planter UNLOCK NEW SEEDS', 'Planter FARM ONE SEED'] },
-    { key: 'gardenSeed', hint: 'Seed to farm (farm mode, or once every seed is unlocked).', seeds: true },
-    { key: 'gardenHarvestMature', hint: 'Harvest payout plants (e.g. Bakeberry) as soon as they mature.', display: ON_OFF('Harvest Mature') },
-    { key: 'gardenAutoSoil', hint: 'Switch soil automatically (woodchips to unlock, clay to farm).', display: ON_OFF('Auto Soil') },
+    { key: 'gardenSeed', hint: 'Seed to farm (farm mode, or once every seed is unlocked). Auto picks the seed and soil worth the most cookies per second right now.', seeds: true },
+    { key: 'gardenHarvestMature', hint: 'Harvest payout plants (Bakeberry, Chocoroot, Queenbeet, Duketater...) as soon as they mature. Passive plants are left to live out their life.', display: ON_OFF('Harvest Mature') },
+    { key: 'gardenAutoSoil', hint: 'Switch soil automatically: Fertilizer while plants grow, Wood chips once the parents are mature; when farming, whichever soil pays best.', display: ON_OFF('Auto Soil') },
     { head: 'Other:' },
     { key: 'FCshortcuts', hint: 'Enable keyboard shortcuts (a: autobuy, b: building spread, c: autoclick GC, e: export save, r: ascend, s: save, w: wrinklers).', display: ON_OFF('Shortcuts') },
     { key: 'simulatedGCPercent', hint: 'Assume % of GCs clicked for efficiency (100% recommended).', display: ['GC clicked 0%', 'GC clicked 100%'] },
@@ -2186,7 +2426,7 @@
     if (S.autoTrade && Mk) {
       let held = 0, val = 0;
       for (const g of Mk.goodsById) { held += g.stock; val += g.stock * g.val; }
-      h += listing('Auto-Trader', held + ' shares worth $' + B(val) + ', realized profit $' + B(D.tradeProfit) + ', ' + Mk.brokers + ' brokers');
+      h += listing('Auto-Trader', held + ' shares worth $' + B(val) + ', realized profit $' + B(D.tradeProfit) + ', ' + Mk.brokers + ' brokers; ' + esc(tradeInfo.text));
     }
     if (S.autoGarden) h += listing('Garden Planter', esc(gardenStatus));
     h += listing('Game Seed', esc(Game.seed)) + listing('Building Spread', Game.ObjectsById.map((b) => b.amount).join('/'));
@@ -2487,12 +2727,12 @@
     run.main();
     run.clickRate();
     if (!busy) {
-      run.autoGS(); run.autoGodzamok(); run.autoDragon();
+      run.autoGS(); run.autoGodzamok(); run.autoDragon(); run.trader();
       if (tickN % 2 === 0) { run.autoLoan(); run.autoSugarFrenzy(); }
       if (tickN % 5 === 0) { run.autoEaster(); run.autoHalloween(); run.autoPantheon(); }
       if (tickN % 10 === 0) {
         run.autoCast(); run.autoFortune(); run.autoBank(); run.autoBroker(); run.petDragon(); run.dragonAuras(); run.dragonOrbs();
-        run.otherUpgrades(); run.trader(); run.garden(); run.spellTooltip();
+        run.otherUpgrades(); run.garden(); run.spellTooltip();
       }
     }
     if (tickN % 10 === 0) { run.stats(); run.ui(); }
@@ -2530,12 +2770,14 @@
     nextSpell: (i) => nextSpellName(i || 0),
     effectiveCps: () => effectiveCps(),
     gardenPlan: () => gardenPlan,
+    _gardenReplan: () => { gardenPlanSig = ''; farmPick = null; },
+    _evaluateFarm: () => { const M = garden(); return M ? evaluateFarm(M, gardenBounds(M)) : []; },
     resetSettings: () => { localStorage.removeItem(STORE_KEY); console.log('[Sleepy Cookies] Settings reset. Paste the script again to reload.'); },
     _confirmNumber: () => confirmNumber(),
     _applyRecommended: () => applyRecommended(),
     _recordStats: () => { saveStats(); refreshMenuInfo(); },
     _clearStats: () => { D.trackedStats = []; save(); refreshMenuInfo(); },
-    _internal: { combo2, pantheonInfo, grimoireInfo, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
+    _internal: { combo2, pantheonInfo, grimoireInfo, tradeInfo, simulateGood, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
   };
   start();
 })();

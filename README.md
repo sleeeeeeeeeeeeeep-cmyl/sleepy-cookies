@@ -62,7 +62,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
   - stocks
   - the garden
   - the Chocolate egg, opened in time to count towards your chips
-- **Golden switch, Godzamok and Sugar Frenzy:** during click buffs, turns on the Golden switch and sells and rebuys mines and factories for Godzamok, but only when the extra clicking is worth more than the cost. It also buys Sugar Frenzy during big combos, paying its sugar lump like normal. A Golden switch you turned on yourself is left alone.
+- **Golden switch, Godzamok and Sugar Frenzy:** during click buffs, turns on the Golden switch and sells and rebuys mines and factories for Godzamok, but only when the extra clicking is worth more than the cost. A Golden switch you turned on yourself is left alone. It also buys Sugar Frenzy (once per ascension) the first time your CpS multiplier reaches your set level, paying its sugar lump like normal.
 - **Stock market:** upgrades your bank office, hires brokers, and takes loans during huge combos.
 
 ### Smart Grimoire
@@ -73,7 +73,10 @@ The game decides each Force the Hand of Fate result in advance, so Sleepy Cookie
   - Only needs enough mana for the spell, not a full bar.
   - Won't stack a second Click Frenzy on top of one already running.
 - **Two good results in a row with full mana:** double-cast. It sells wizard towers so the second cast is cheap, re-checks the prediction, then buys the towers back.
-- **Bad result next** (Clot, Ruin, Blab, Cookie Storm drop): spent on a cheap spell so the next cast is a good one.
+- **Bad result next** (Clot, Ruin, Blab, Cookie Storm drop): spent on a cheap spell so the next cast is a good one. During a Clot it uses Stretch Time when that spell is predicted to backfire, because a backfire shortens the Clot.
+- **Combo chaining**, while a boost stack is running:
+  - **Bad result with a good one behind it:** if there's mana for both, it skips the bad one right away and casts the good one a second later. When Stretch Time is predicted to succeed, it uses that for the skip, which also makes every running buff 10% longer.
+  - **Click buff on top of a Frenzy:** uses Stretch Time to lengthen the whole stack, but only when it will succeed and enough mana is left for the next Force the Hand of Fate.
 - **Spell tooltip:** hover over Force the Hand of Fate to see the next four results.
 
 ### Auto Pantheon
@@ -86,15 +89,27 @@ Tests every combination of the useful gods with the efficiency formula and slots
 Upgrades and pets the dragon (for its drops), sets your two chosen auras, and can sell Yous for Dragon Orbs. The dragon popup only stays open if you opened it yourself.
 
 ### Stock market trader (Sleepy extra)
-- Buys stocks well below their resting price and sells well above it, never for less than a minimum profit.
-- Can read the market's hidden trend to avoid buying while a stock is falling or selling while it's rising.
-- Only spends cookies that aren't needed for the bank or the next purchase, so it never slows down auto-buy.
+- **Simulation:** every market tick (once a minute), it simulates 120 possible next 4 hours for each stock using the game's own price rules. By default it also uses each stock's hidden trend and mode.
+- **Buying:** buys when the expected profit after the broker fee is at least your minimum (15% by default).
+- **Selling:** sells when the current price beats what holding on is expected to bring.
+- **Budget:**
+  - It never touches the cookie bank.
+  - It uses cookies auto-buy is saving up only when a stock is expected to grow faster than the next purchase would pay back. That's usually late game, when purchases take days to pay off.
+  - Stock prices are measured in seconds of your highest CpS, so shares keep their value as your CpS grows.
 
 ### Garden planter (Sleepy extra)
-- **Unlock new seeds:** picks the parent plants and layout most likely to mutate into a seed you don't have yet, then harvests the new plant once it's mature.
-- **Farm one seed:** fills the plot with one seed and harvests payout plants such as Bakeberry when they're ripe.
+- **Unlock new seeds:**
+  - **Target:** picks the locked seed that should unlock soonest, counting the time to grow the parents, the wait for the mutation and the time for the new plant to grow.
+  - **Odds:** works out the exact chance of each mutation from the game's own rules, including that a 20% Baker's wheat spread competes with a 5% Thumbcorn for the same tile.
+  - **Layout:** improves the planting layout tile by tile. For Thumbcorn on a full plot that means 26 mutation slots instead of 8.
+  - **Spores:** for Brown mold and Crumbspore it plants Meddleweed and pulls it just before it would die of old age. Spores drop more often the older the weed is.
+  - **Harvest:** harvests each new plant when it's mature, which unlocks its seed.
+- **Farm one seed:** **Auto** picks the seed and soil worth the most cookies per second right now.
+  - It tests each option by filling the plot with that plant in a simulation and recomputing your CpS, including golden cookie, milk and clicking effects.
+  - It also uses the game's harvest payouts, for example Bakeberry pays 3% of your bank, up to 30 minutes of CpS.
+  - It harvests payout plants (Bakeberry, Chocoroot, Queenbeet, Duketater) when they're mature and leaves passive ones like Baker's wheat to live out their life.
+- **Soil:** switches automatically. In unlock mode it grows parents on Fertilizer, switches to Wood chips (3× mutations) once they're mature, and goes back to Fertilizer while a new plant grows. In farm mode it uses whichever soil pays best.
 - Clears weeds and unwanted mutations.
-- Switches soil automatically: Fertilizer while the parent plants grow, then Wood chips (3× mutations) once they're mature.
 
 ### Info and display
 - An info section with everything Frozen Cookies shows: next purchase, bank, golden cookie timers, heavenly chip rate, frenzy times and stat graphs.
