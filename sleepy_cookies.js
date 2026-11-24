@@ -26,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.7.0';
+  const VERSION = '2.7.1';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -1106,6 +1106,10 @@
   }
   function autoBuyStep() {
     if (!S.autoBuy) return false;
+    // with no income at all (a fresh Born again run with clicks capped) the efficiency ranking can pick
+    // something that never becomes affordable, so get the first Cursor going directly
+    const cur = Game.Objects.Cursor;
+    if (Game.cookiesPs <= 0 && cur.amount === 0 && Game.cookies >= cur.getPrice()) { if (safeBuy(cur, 1)) { invalidate(); return true; } }
     const rec = nextPurchase(), chain = nextChainedPurchase();
     if (!rec || rec.type === 'other') return false;
     const delay = bestBank(chain.efficiency).cost;
@@ -2188,7 +2192,7 @@
   // one long run, which garden job, ...) in favour of the quickest one; "My list" does the same for the
   // achievements you picked. Goals marked risky (lose a lump, reset your seeds, a Born again detour) are only
   // used in Fastest first when "Risky goals" is on; picking one yourself counts as saying yes.
-  const achInfo = { lines: [], goals: [], top: [] };
+  const achInfo = { goals: [], top: [] };
   const won = (name) => !!(Game.Achievements[name] && Game.Achievements[name].won);
   const lumpSec = () => Math.max(1, Game.lumpRipeAge / 1000);
   const spareLumps = () => Math.max(0, Game.lumps - S.lumpReserve);
@@ -2250,28 +2254,127 @@
       const cur = Game.Objects.Cursor;
       add('Pyramid scheme', { group: 'ascend', policy: 'stay', part: 'levels12', est: Math.max(0, toLevel(cur, 12) - spareLumps()) * lumpSec(), how: 'top office in one run: Cursor level 12 (now ' + cur.level + ') and 1,850 cursors in total' });
       add('Liquid assets', { group: 'ascend', policy: 'stay', est: null, how: '$' + B(Bk.profit) + ' of $10M stock profit in one run' });
-      add('Debt evasion', { part: 'debt', est: Bk.officeLevel >= 2 ? 60 : Math.max(0, toLevel(cur, 4) - spareLumps()) * lumpSec(), how: 'take Loan 1 right before ascending (office level 2, now ' + Bk.officeLevel + ')' });
+      const debtLumps = Math.max(0, toLevel(cur, 4) - spareLumps());
+      add('Debt evasion', { part: 'debt', est: Bk.officeLevel >= 2 ? 0 : debtLumps ? debtLumps * lumpSec() : 300,
+        how: 'takes Loan 1 right before you ascend; needs office level 2 in that run (now ' + Bk.officeLevel + (Bk.officeLevel >= 2 ? '' : cur.level < 4 ? ', Cursor level 4 first' : S.autoBank ? ', Auto Office will upgrade it' : ', turn on Auto Office or upgrade it yourself') + ')' });
     }
 
-    const step = Math.max(1, Math.pow(2, Math.floor(Math.log2(Game.prestige || 1)) - 52));
-    const perRun = Math.max(1, 3 * Game.prestige * Game.prestige * step) * 1e12 / cps;
-    add('Reincarnation', { group: 'ascend', policy: 'soon', part: 'farm', est: Math.max(0, 100 - Game.resets) * perRun, how: Game.resets + '/100 ascensions (each must raise your prestige level)' });
+    add('Reincarnation', { group: 'ascend', policy: 'soon', part: 'farm', est: ascensionsEst(100, cps), how: Game.resets + '/100 ascensions (each must raise your prestige level)' });
     add('And a little extra', { group: 'ascend', policy: 'stay', est: Math.max(0, 1e72 - Game.cookiesEarned) / cps, how: B(Game.cookiesEarned) + ' of 1 trevigintillion in one run' });
-    add('Neverclick', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: 3600, how: 'Born again run: 1 million cookies with 15 clicks' });
-    add('Hardcore', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: 3 * 3600, how: 'Born again run: 1 billion cookies with no upgrades' });
+    // Born again: measured ~55 min to 1 million and ~2 h 55 min to 1 billion with the add-on playing
+    const born = Game.ascensionMode === 1 || Game.resets === 0;
+    const bornEst = (target, fresh, ok) => !born ? fresh : !ok ? Infinity : Math.max(0, target - Game.cookiesEarned) / Math.max(1, Game.cookiesPs);
+    add('Neverclick', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: bornEst(1e6, 3300, Game.cookieClicks <= 15),
+      how: born ? (Game.cookieClicks <= 15 ? B(Game.cookiesEarned) + ' of 1 million, ' + Game.cookieClicks + '/15 clicks used' : 'over 15 clicks this run; needs another Born again run') : 'Born again run: 1 million cookies with 15 clicks or fewer' });
+    add('Hardcore', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: bornEst(1e9, 10500, Game.UpgradesOwned === 0),
+      how: born ? (Game.UpgradesOwned === 0 ? B(Game.cookiesEarned) + ' of 1 billion, no upgrades yet' : Game.UpgradesOwned + ' upgrades bought this run; needs another Born again run') : 'Born again run: 1 billion cookies with no upgrades' });
     // the factory dungeon isn't in the game ("not yet" in main.js), and its achievements don't count
+    // every other missing achievement, worked out from what the game itself checks
+    const have = new Set(out.map((g) => g.name));
+    for (const a of Object.values(Game.AchievementsById)) {
+      if (a.won || have.has(a.name) || !Game.CountsAsAchievementOwned(a.pool)) continue;
+      let g;
+      try { g = genericGoal(a, cps); } catch (e) { g = { other: true, est: null, how: plainDesc(a) }; }   // one odd achievement can't break the list
+      if (g) out.push(Object.assign({ name: a.name }, g));
+    }
     return out;
+  }
+  const plainDesc = (a) => String(a.ddesc || a.desc || '').replace(/<q>.*?<\/q>/g, '').replace(/<[^>]+>/g, '').trim();
+  function overCap(b, n) {
+    if (S.mineLimit && b.name === 'Mine') return n > S.mineMax;
+    if (S.factoryLimit && b.name === 'Factory') return n > S.factoryMax;
+    if (S.towerLimit && b.name === 'Wizard tower') return n > S.manaMax;
+    if (S.autoDragonOrbs && S.orbLimit && b.name === 'You') return n > S.orbMax;
+    return false;
+  }
+  // The game's own checks ("if (Game.goldenClicks>=77) Game.Win('Fortune')"), read from its code once, so the
+  // list follows whatever the game actually tests, including achievements added in later versions.
+  let CHECKS = null;
+  function achChecks() {
+    if (CHECKS) return CHECKS;
+    CHECKS = {};
+    const fns = ['Logic', 'Reset', 'Reincarnate', 'Ascend', 'gainLumps', 'UpgradeSanta', 'UpgradeDragon'].map((k) => original(Game, k))
+      .concat([Game.Objects.Cursor && Game.Objects.Cursor.buyFunction, Game.shimmerTypes.golden && original(Game.shimmerTypes.golden, 'popFunc')]);
+    const re = /if\s*\(\s*([A-Za-z_$][\w.$]*)\s*>=\s*([0-9][0-9.e+]*)\s*\)\s*\{?\s*Game\.Win\('((?:[^'\\]|\\.)*)'\)/g;
+    for (const f of fns) {
+      if (typeof f !== 'function') continue;
+      const src = f.toString(); let m;
+      while ((m = re.exec(src))) { const name = m[3].replace(/\\(.)/g, '$1'); if (!CHECKS[name]) CHECKS[name] = { expr: m[1], n: Number(m[2]) }; }
+    }
+    return CHECKS;
+  }
+  // seconds until `n` total ascensions, counting whether this run would already count
+  const ascensionsEst = (n, cps) => {
+    const left = Math.max(0, n - Game.resets);
+    if (!left) return 0;
+    const ready = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned)) > Game.prestige;
+    return (ready ? 0 : perAscension(cps)) + (left - 1) * perAscension(cps);
+  };
+  const perAscension = (cps) => {
+    const step = Math.max(1, Math.pow(2, Math.floor(Math.log2(Game.prestige || 1)) - 52));
+    return Math.max(1, 3 * Game.prestige * Game.prestige * step) * 1e12 / cps;
+  };
+  const counter = (have, n, rate, what) => ({ passive: true, est: have >= n ? 0 : rate > 0 ? (n - have) / rate : null, how: B(have) + ' of ' + B(n) + ' ' + what });
+  function buildingGoal(b, n, cps) {
+    const more = Math.max(0, n - b.amount), cost = more ? b.getSumPrice(more) : 0;
+    if (overCap(b, n)) return { other: true, est: null, how: n + ' ' + b.plural + ' (above your ' + b.name + ' limit in the menu)' };
+    return { part: 'buildings', targets: [[b, n]], est: Math.max(0, cost - Math.max(0, Game.cookies - delayAmount())) / cps, how: b.amount + '/' + n + ' ' + b.plural + (more ? ' (' + B(cost) + ' cookies)' : '') };
+  }
+  function genericGoal(a, cps) {
+    if (Game.BankAchievements.includes(a)) return counter(Game.cookiesEarned, a.threshold, Game.cookiesPs, 'baked this run');
+    if (Game.CpsAchievements.includes(a))
+      return { passive: true, est: Game.cookiesPsRaw >= a.threshold ? 0 : null, how: 'raw CpS ' + B(Game.cookiesPsRaw) + ' of ' + B(a.threshold) };
+    const b = a.buildingTie;
+    if (b && b.tieredAchievs && b.tieredAchievs[a.tier] === a) return buildingGoal(b, Game.Tiers[a.tier].achievUnlock, cps);
+    for (const o of Game.ObjectsById) {
+      const pa = (o.productionAchievs || []).find((x) => x.achiev === a);
+      if (pa) return counter(o.totalCookies, pa.pow, (o.storedTotalCps || 0) * Game.globalCpsMult, 'made by ' + o.plural);
+    }
+    const c = achChecks()[a.name];
+    if (c) {
+      const n = c.n;
+      switch (c.expr) {
+        case 'this.amount': return buildingGoal(Game.Objects.Cursor, n, cps);
+        case 'Game.goldenClicks': { const t = avgShimmer('golden'); return counter(Game.goldenClicks, n, t ? 1 / t : 0, 'golden cookies clicked'); }
+        case 'Game.handmadeCookies': return counter(Game.handmadeCookies, n, Game.computedMouseCps * (S.autoClick ? S.cookieClickSpeed : 0), 'cookies from clicking');
+        case 'Game.lumpsTotal': return counter(Game.lumpsTotal, n, 1 / lumpSec(), 'sugar lumps harvested');
+        case 'cookiesForfeited': return Object.assign(counter(Game.cookiesEarned, n, Game.cookiesPs, 'baked this run'), { how: B(Game.cookiesEarned) + ' of ' + B(n) + ' baked this run (counts when you ascend)' });
+        case 'Game.resets': return { group: 'ascend', policy: 'soon', part: 'farm', est: ascensionsEst(n, cps), how: Game.resets + '/' + n + ' ascensions (each must raise your prestige level)' };
+        case 'minAmount': {
+          const targets = Game.ObjectsById.filter((o) => o.amount < n).map((o) => [o, n]);
+          if (targets.some(([o]) => overCap(o, n))) return { other: true, est: null, how: n + ' of every building (above one of your building limits)' };
+          const cost = targets.reduce((s, [o]) => s + o.getSumPrice(n - o.amount), 0);
+          const low = Math.min(...Game.ObjectsById.map((o) => o.amount));
+          return { part: 'buildings', targets, est: Math.max(0, cost - Math.max(0, Game.cookies - delayAmount())) / cps, how: n + ' of every building (lowest now ' + low + (cost ? ', ' + B(cost) + ' cookies' : '') + ')' };
+        }
+        case 'Game.reindeerClicked': { const t = avgShimmer('reindeer'); return Object.assign(counter(Game.reindeerClicked, n, t ? 1 / t : 0, 'reindeer (stays in Christmas)'), { passive: false, part: 'christmas' }); }
+        case 'buildingsOwned': return counter(Game.BuildingsOwned, n, 0, 'buildings owned');
+        case 'Game.UpgradesOwned': return counter(Game.UpgradesOwned, n, 0, 'upgrades owned');
+        case 'Game.wrinklersPopped': return Object.assign(counter(Game.wrinklersPopped, n, 0, 'wrinklers popped'), { passive: !!S.autoWrinkler, other: !S.autoWrinkler });
+        case 'prestigeUpgradesOwned': return Object.assign(counter(Object.values(Game.UpgradesById).filter((u) => u.bought && u.pool === 'prestige').length, n, 0, 'heavenly upgrades'), { passive: false, other: true });
+        case 'Game.santaLevel': return { other: true, est: null, how: 'Santa level ' + (Game.santaLevel + 1) + '/' + (n + 1) + ' (Christmas season)' };
+        case 'Game.dragonLevel': return { other: true, est: null, how: 'dragon level ' + Game.dragonLevel + '/' + n };
+      }
+    }
+    return { other: true, est: null, how: plainDesc(a) || 'no helper for this one' };
   }
 
   // ---- which goals are being worked on
+  let builtAt = 0, builtOwned = -1;
   function selectGoals() {
-    const all = buildGoals();
-    const rank = (g) => (g.est === null ? 1e300 : g.est);
-    all.sort((a, b) => rank(a) - rank(b));
-    achInfo.goals = all;
+    // rebuilt every 2 s, or right away when an achievement unlocks
+    if (Date.now() - builtAt > 2000 || builtOwned !== Game.AchievementsOwned) {
+      const rank = (g) => (g.est === null ? 1e300 : g.est);
+      achInfo.goals = buildGoals().sort((a, b) => rank(a) - rank(b));
+      builtAt = Date.now(); builtOwned = Game.AchievementsOwned;
+    }
+    const all = achInfo.goals;
     let pick = [];
-    if (S.achMode === 1) pick = all.filter((g) => !g.manual && !g.passive && g.est !== Infinity && (S.achRisky || !g.risky));
-    else if (S.achMode === 2) pick = all.filter((g) => (D.achList || []).includes(g.name) && !g.manual);
+    // ticked goals you already have drop off the list
+    if (D.achList && D.achList.some((n) => !Game.Achievements[n] || won(n))) { D.achList = D.achList.filter((n) => Game.Achievements[n] && !won(n)); save(); }
+    const helper = (g) => !g.manual && !g.passive && !g.other;
+    if (S.achMode === 1) pick = all.filter((g) => helper(g) && g.est !== Infinity && (S.achRisky || !g.risky));
+    else if (S.achMode === 2) pick = all.filter((g) => (D.achList || []).includes(g.name) && helper(g));
     // conflicts: one ascension policy and one garden job, decided by the quickest goal that needs it
     const firstOf = (grp) => pick.find((g) => g.group === grp);
     const asc = firstOf('ascend'), gar = firstOf('garden');
@@ -2364,6 +2467,19 @@
       logEvent('Achievements', won('Hand-picked') ? 'Early harvest worked: Hand-picked' : 'Early harvest gave nothing; trying again with the next lump');
     }
   }
+  // building count goals: buy the rest at once when spare cookies (above the bank) cover it
+  function buildingsStep() {
+    const spare = Math.max(0, Game.cookies - delayAmount());
+    for (const g of achInfo.top) {
+      if (g.part !== 'buildings') continue;
+      const need = g.targets.filter(([b, n]) => b.amount < n);
+      if (!need.length || need.reduce((s, [b, n]) => s + b.getSumPrice(n - b.amount), 0) > spare) continue;
+      for (const [b, n] of need) safeBuy(b, n - b.amount);
+      logEvent('Achievements', 'Bought buildings for ' + g.name);
+      invalidate();
+      return;                                          // one goal per check; the bank is re-checked next time
+    }
+  }
   function seedlessStep() {
     const G = garden();
     if (!G || G.plantsUnlockedN < G.plantsN || G.freeze) return;
@@ -2425,10 +2541,13 @@
     if (parts.has('handPicked')) handPickedStep();
     if (parts.has('seedless')) seedlessStep();
     if (parts.has('stocks')) stocksStep();
+    if (parts.has('buildings')) buildingsStep();
     if (parts.has('levels') || parts.has('levels12')) levelsStep(parts);
   }
   // for the menu: list every missing achievement with its estimate
-  function achRefreshList() { achInfo.goals = buildGoals().sort((a, b) => (a.est === null ? 1e300 : a.est) - (b.est === null ? 1e300 : b.est)); }
+  function achRefreshList() {
+    if (D.achList && D.achList.some((n) => !Game.Achievements[n] || won(n))) { D.achList = D.achList.filter((n) => Game.Achievements[n] && !won(n)); save(); }
+    achInfo.goals = buildGoals().sort((a, b) => (a.est === null ? 1e300 : a.est) - (b.est === null ? 1e300 : b.est)); }
   function achToggle(name) {
     const L = D.achList || (D.achList = []);
     const i = L.indexOf(name);
@@ -2650,20 +2769,20 @@
   const estText = (e) => (e === null ? 'unknown' : e === Infinity ? 'not possible yet' : e < 1 ? 'ready' : '~' + timeDisplay(e));
   function achPicker() {
     const box = el('div', { class: 'listing' });
-    if (!achInfo.goals.length || !achPickerOpen) achRefreshList();
+    achRefreshList();                                  // always from the achievements you have right now
     const goals = achInfo.goals, mine = D.achList || [], working = new Set(achInfo.top.map((g) => g.name));
     box.append(el('label', { class: 'sc-hint-label' }, goals.length + ' missing achievements, quickest first. ' +
-      (S.achMode === 2 ? 'Tick the ones to work on.' : 'Ticks are used in MY LIST mode.') + ' ▶ = being worked on now; (you) = needs you; (passive) = comes with normal play.'));
+      (S.achMode === 2 ? 'Tick the ones to work on.' : 'Ticks are used in MY LIST mode.') + ' ▶ = being worked on now; (you) = needs you; (passive) = comes with normal play; (no helper) = the add-on can\'t do this one.'));
     const t = el('a', { class: 'option sc-extra' }, achPickerOpen ? 'Hide goal list' : 'Show goal list (' + mine.length + ' ticked)');
     t.onclick = () => { PlaySound('snd/tick.mp3'); achPickerOpen = !achPickerOpen; buildMenu(); };
     box.append(t);
     if (!achPickerOpen) return box;
     const list = el('div', { class: 'sc-group-vertical' });
     for (const g of goals) {
-      const tag = g.manual ? ' (you)' : g.passive ? ' (passive)' : g.risky ? ' ⚠️' : '';
+      const tag = g.manual ? ' (you)' : g.passive ? ' (passive)' : g.other ? ' (no helper)' : g.risky ? ' ⚠️' : '';
       const b = el('a', { class: 'sc-choice' + (mine.includes(g.name) ? ' selected' : '') });
       b.append(el('b', null, (working.has(g.name) ? '▶ ' : '') + g.name + tag), el('span', null, ' — ' + estText(g.est)), el('br'), el('small', { style: 'color:#aaa' }, g.how));
-      if (g.manual || g.passive) b.style.cursor = 'default';
+      if (g.manual || g.passive || g.other) b.style.cursor = 'default';
       else b.onclick = () => { PlaySound('snd/tick.mp3'); achToggle(g.name); };
       list.append(b);
     }
@@ -2965,7 +3084,14 @@
 
   // ================================================================== game overrides (all restored by stop())
   const restore = [];
-  function override(obj, key, value) { const old = obj[key]; restore.push(() => { obj[key] = old; }); obj[key] = value; }
+  const ORIG = new Map();                              // the game's own functions, before any override
+  function override(obj, key, value) {
+    const old = obj[key];
+    if (!ORIG.has(obj)) ORIG.set(obj, {});
+    if (!(key in ORIG.get(obj))) ORIG.get(obj)[key] = old;
+    restore.push(() => { obj[key] = old; }); obj[key] = value;
+  }
+  function original(obj, key) { const o = ORIG.get(obj); return o && key in o ? o[key] : obj[key]; }
   const descOriginals = new Map();
   function beautifyDescriptions() {
     const re = /\d\d?\d?(?:,\d\d\d)+/;
@@ -3003,6 +3129,16 @@
       const p = Game.Popup;
       Game.Popup = function (text, x, y) { logEvent('GC', String(text).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()); return p(text, x, y); };
       try { return oldPop.call(this, me); } finally { Game.Popup = p; }
+    });
+    // Hardcore goal: no upgrade can be bought (by the add-on, Buy all or by hand) until it unlocks
+    const oldBuy = Game.Upgrade.prototype.buy;
+    let warnedAt = 0;
+    override(Game.Upgrade.prototype, 'buy', function (bypass) {
+      if (achHardcore() && !this.bought && Game.CountsAsUpgradeOwned(this.pool)) {
+        if (Date.now() - warnedAt > 10000) { warnedAt = Date.now(); Game.Notify('Upgrade blocked', 'Sleepy Cookies: no upgrades until you have Hardcore (achievement goal).', [12, 6], 4); }
+        return 0;
+      }
+      return oldBuy.apply(this, arguments);
     });
     Game.registerHook('reincarnate', onReincarnate);
     Game.registerHook('ticker', tickerLines);
@@ -3122,10 +3258,11 @@
     resetSettings: () => { localStorage.removeItem(STORE_KEY); console.log('[Sleepy Cookies] Settings reset. Paste the script again to reload.'); },
     _confirmNumber: () => confirmNumber(),
     _achToggle: (name) => achToggle(name),
+    _achRefresh: () => achRefreshList(),
     _applyRecommended: () => applyRecommended(),
     _recordStats: () => { saveStats(); refreshMenuInfo(); },
     _clearStats: () => { D.trackedStats = []; save(); refreshMenuInfo(); },
-    _internal: { achInfo, FARM, combo2, pantheonInfo, grimoireInfo, tradeInfo, simulateGood, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
+    _internal: { achInfo, achChecks, FARM, combo2, pantheonInfo, grimoireInfo, tradeInfo, simulateGood, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
   };
   start();
 })();

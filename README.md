@@ -138,12 +138,14 @@ Upgrades and pets the dragon (for its drops), sets your two chosen auras, and ca
 - Clears weeds and unwanted mutations.
 
 ### Achievement goals (Sleepy extra)
-The menu lists every achievement you're missing, quickest first, with an estimate of how long each will take and what it needs. Pick how the add-on works on them:
+The menu lists every achievement you're missing, read live from your game, quickest first. Each shows an estimate of how long it will take and what it still needs, worked out from the same checks the game uses (golden cookie counts, building counts, cookies baked, ascensions and so on). Achievements you unlock drop off the list, and off your ticked list, by themselves. Pick how the add-on works on them:
 - **Fastest first:** works on every missing achievement it can automate, quickest first.
 - **My list:** works only on the achievements you tick in the list.
 - **Off.**
 
-When two goals clash, the quickest one wins. For example, Reincarnation wants short runs and Liquid assets wants one long run. Goals marked "(you)" need you (Wrinkler poker, Baby it's old outside), and "(passive)" ones come with normal play (Black cat's paw, Year's worth of cavities).
+Building count goals (50 farms, 100 of every building and so on) are bought in one go once your spare cookies above the bank cover them.
+
+When two goals clash, the quickest one wins. For example, Reincarnation wants short runs and Liquid assets wants one long run. Goals marked "(you)" need you (Wrinkler poker, Baby it's old outside), "(passive)" ones come with normal play (Black cat's paw, Year's worth of cavities), and "(no helper)" ones are listed so you can see them but the add-on can't work on them (seasonal events, Santa and dragon levels).
 
 What it does for each goal:
 - **Reincarnation:** from your next Ascend screen (30 seconds to spend chips the first time), reincarnates, then ascends again as soon as the ascension would count, until 100. The game only counts an ascension that raises your prestige level, so at a very high prestige level each one still needs a big run.
@@ -157,7 +159,7 @@ What it does for each goal:
 - **Risky goals** (Fastest first only uses them with **Risky Goals** on; ticking one yourself counts as a yes):
   - **Hand-picked:** harvests a mature, unripe lump. That's a 50% chance of a lump; otherwise you lose it.
   - **Seedless to nay:** sacrifices the garden once all 34 seeds are unlocked. You get 10 lumps and your seeds reset.
-  - **Neverclick and Hardcore:** picks Born again on your next Ascend screen, clicks only 15 times and buys no upgrades until both are yours, then ascends back to a normal run.
+  - **Neverclick and Hardcore:** picks Born again on your next Ascend screen, clicks only 15 times and buys no upgrades until both are yours, then ascends back to a normal run. While Hardcore is the goal, upgrades can't be bought at all, by hand or with Buy all, so one stray click can't ruin the run.
 
 ### Info and display
 - An info section with everything Frozen Cookies shows: next purchase, bank, golden cookie timers, heavenly chip rate, frenzy times and stat graphs.
