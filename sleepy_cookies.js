@@ -26,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.7.1';
+  const VERSION = '2.7.3';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -1035,7 +1035,7 @@
       if ((name === 'Weighted sleighs' || name === "Santa's bottomless bag") && Game.season !== 'christmas') continue;
       if ((name === 'Dragon fang' || name === 'Dragon teddy bear') && Game.dragonLevel <= 26) continue;
       if (name === 'Sacrificial rolling pins' && !Game.Upgrades['Elder Pact'].bought) continue;
-      if (u.unlocked && !u.bought && Game.cookies > u.getPrice()) { u.buy(1); logEvent('OtherUpgrades', 'Bought ' + name); invalidate(); }
+      if (u.unlocked && !u.bought && Game.cookies - u.getPrice() >= delayAmount() && u.buy(1)) { logEvent('OtherUpgrades', 'Bought ' + name); invalidate(); }
     }
   }
 
@@ -1078,6 +1078,11 @@
   function rewardCookieAction() {
     const chain = nextChainedPurchase();
     if (!chain || chain.type !== 'upgrade' || !isRewardCookie(chain.purchase)) return;
+    // the whole set (every building up to the threshold + the cookie) has to fit above the bank; buying
+    // part of it would drain the bank and leave buildings over your limits for nothing
+    let total = chain.purchase.getPrice();
+    PREREQS[chain.purchase.id][0].forEach((amt, i) => { const b = Game.ObjectsById[i]; if (b && b.amount < amt) total += b.getSumPrice(amt - b.amount); });
+    if (Game.cookies - total < bestBank(chain.efficiency).cost) return;
     PREREQS[chain.purchase.id][0].forEach((amt, i) => {
       const b = Game.ObjectsById[i];
       if (b && b.amount < amt) safeBuy(b, amt - b.amount);
@@ -1104,6 +1109,39 @@
     if (M && S.towerLimit && b.name === 'Wizard tower' && M.magicM >= S.manaMax - 10) cap = 1;
     return Math.max(1, Math.min(n, cap));
   }
+  // While saving for the top pick, buy cheaper upgrades that pay for themselves before that pick would have
+  // been affordable anyway: buying them gets you there sooner (or at the same time) and keeps the extra CpS.
+  // Example: saving 10 minutes for a building while 20 upgrades each pay back in 2 minutes.
+  function fillerBuys(rec, bank) {
+    const cps = Math.max(1e-9, effectiveCps(Math.min(Game.cookies, bank)) || Game.unbuffedCps || 0);   // same CpS measure as the gains
+    const target = bank + rec.cost;
+    const spare = Game.cookies - bank;
+    if (!(spare > 0) || !isFinite(target)) return false;
+    const t0 = (target - Game.cookies) / cps;           // seconds until the top pick is affordable
+    const cands = recommendationList().filter((r) => r !== rec && r.type === 'upgrade' && !r.pruned && r.delta_cps > 0 && r.cost <= spare &&
+      r.purchase.unlocked && !r.purchase.bought && (r.purchase.pool === '' || r.purchase.pool === 'cookie') &&
+      !NO_BUYALL.has(r.purchase.name) && r.purchase.name !== 'Elder Pledge' && !/Elder Covenant/.test(r.purchase.name))
+      .sort((a, b) => a.cost / a.delta_cps - b.cost / b.delta_cps);
+    let spent = 0, gain = 0;
+    const pick = [];
+    // the bank (Lucky, manual minutes, ...) is sized from CpS, so it grows with every gain
+    const bankAfter = (g) => bank * (cps + g) / cps;
+    for (const c of cands) {
+      const s = spent + c.cost, g = gain + c.delta_cps;
+      if (Game.cookies - s < bankAfter(g)) continue;     // would leave the (bigger) bank short
+      const t1 = (bankAfter(g) + rec.cost - (Game.cookies - s)) / (cps + g);
+      if (t1 > t0) continue;                             // would make the top pick arrive later
+      spent += c.cost; gain += c.delta_cps; pick.push(c);
+      if (pick.length >= 50) break;
+    }
+    if (!pick.length) return false;
+    let n = 0;
+    for (const c of pick) if (c.purchase.buy(1)) n++;
+    if (!n) return false;
+    logEvent('Autobuy', 'Bought ' + n + ' upgrade' + (n > 1 ? 's' : '') + ' while saving for ' + rec.name + ' (they pay for themselves before it is affordable)');
+    invalidate();
+    return true;
+  }
   function autoBuyStep() {
     if (!S.autoBuy) return false;
     // with no income at all (a fresh Born again run with clicks capped) the efficiency ranking can pick
@@ -1119,7 +1157,7 @@
     if (COV_PAIR[rec.purchase.name] && R.covenantFlip && R.covenantFlip.name === COV_PAIR[rec.purchase.name] && Date.now() - R.covenantFlip.t < 600000) return false;
     // Elder Pledge ignores the bank (FC rule) but still has to be affordable; FC "bought" it even when it
     // wasn't, which here spun the buy loop for its full 30 ms every tick.
-    if (!(Game.cookies >= (isPledge ? 0 : delay) + rec.cost)) return false;
+    if (!(Game.cookies >= (isPledge ? 0 : delay) + rec.cost)) return fillerBuys(rec, isPledge ? 0 : delay);
     if (!isFinite(chain.efficiency)) return false;
     const cookiesBefore = Game.cookies;
     const prestigeGain = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned)) - Math.floor(Game.HowMuchPrestige(Game.cookiesReset));
@@ -1127,7 +1165,11 @@
       Game.storeBuyAll();
       logEvent('Autobuy', 'Bought all upgrades!');
     } else if (rec.type === 'building') {
-      safeBuy(rec.purchase, clampBulk(rec.purchase, Game.buyBulk > 0 ? Game.buyBulk : 1));
+      // with the store on x10/x100, only buy as many as fit above the bank (the game buys until it runs dry)
+      const room = Game.cookies - (isPledge ? 0 : delay);
+      let n = clampBulk(rec.purchase, Game.buyBulk > 0 ? Game.buyBulk : 1);
+      while (n > 1 && rec.purchase.getSumPrice(n) > room) n--;
+      safeBuy(rec.purchase, n);
     } else if (rec.type === 'santa') {
       buySanta();
     } else {
