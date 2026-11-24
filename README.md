@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" width="256" alt="Sleepy Cookies logo"></p>
+
 # Sleepy Cookies
 
 Automation add-on for the web version of [Cookie Clicker](https://orteil.dashnet.org/cookieclicker/), built and tested on **v2.058**.
