@@ -1,5 +1,5 @@
 /*!
- * Sleepy Cookies v2.5.0 - automation add-on for Cookie Clicker
+ * Sleepy Cookies v2.6.0 - automation add-on for Cookie Clicker
  * Built and tested against Cookie Clicker 2.058 (web).
  *
  * A dependency-free port of every Frozen Cookies feature (erbkaiser fork, erb-2.052.8,
@@ -26,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.5.0';
+  const VERSION = '2.7.0';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -56,16 +56,12 @@
     { sec: 'Auto buying', key: 'autoBuy', type: 'check', def: 1, label: 'Auto-buy most efficient building/upgrade' },
     { sec: 'Auto buying', key: 'otherUpgrades', type: 'check', def: 1, label: "Buy upgrades that don't boost CpS directly" },
     { sec: 'Auto buying', key: 'blacklist', type: 'choice', def: 0, label: 'Blacklist', labels: ['Off', 'Speedrun', 'Hardcore', 'Grandmapocalypse', 'No buildings'] },
-    { sec: 'Auto buying', key: 'autoBlacklistOff', type: 'check', def: 0, label: 'Turn blacklist off when its goal is met' },
     { sec: 'Auto buying', key: 'mineLimit', type: 'check', def: 0, label: 'Limit mines (for Godzamok)' },
     { sec: 'Auto buying', key: 'mineMax', type: 'number', def: 500, min: 0, max: 100000, label: 'Max mines' },
     { sec: 'Auto buying', key: 'factoryLimit', type: 'check', def: 0, label: 'Limit factories (for Godzamok)' },
     { sec: 'Auto buying', key: 'factoryMax', type: 'number', def: 500, min: 0, max: 100000, label: 'Max factories' },
-    { sec: 'Auto buying', key: 'pastemode', type: 'check', def: 0, label: 'Pastemode: buy least efficient (not recommended)' },
     // ---- Other automation
-    { sec: 'Other automation', key: 'autoBulk', type: 'choice', def: 0, label: 'Bulk-buy mode after ascending', labels: ['Off', 'x10', 'x100'] },
     { sec: 'Other automation', key: 'autoBuyAll', type: 'check', def: 0, label: 'Buy all upgrades until a heavenly chip is earned' },
-    { sec: 'Other automation', key: 'autoAscendToggle', type: 'check', def: 0, label: 'Auto-ascend (skips the upgrade screen!)' },
     { sec: 'Other automation', key: 'autoAscend', type: 'choice', def: 0, label: 'Auto-ascend when', labels: ['Off', 'Set chip amount reached', 'Prestige doubles', 'Lucky 7s (for Lucky digit/number/payout)'] },
     { sec: 'Other automation', key: 'HCAscendAmount', type: 'number', def: 0, min: 0, max: 1e300, label: 'New heavenly chips to ascend at' },
     { sec: 'Other automation', key: 'comboAscend', type: 'check', def: 0, label: 'Allow ascending during combos (frenzy >= minimum)' },
@@ -75,7 +71,6 @@
     { sec: 'Other automation', key: 'shinyPop', type: 'check', def: 0, label: 'Protect shiny wrinklers (blocks Elder Pledge)' },
     { sec: 'Other automation', key: 'autoSL', type: 'choice', def: 1, label: 'Harvest ripe sugar lumps', labels: ['Off', 'On', 'On + auto Rigidel'] },
     { sec: 'Other automation', key: 'dragonsCurve', type: 'choice', def: 0, label: "Swap in Dragon's Curve for lump harvest", labels: ['Off', 'On', 'On + Reality Bending'] },
-    { sec: 'Other automation', key: 'sugarBakingGuard', type: 'check', def: 0, label: "Don't spend lumps below 101 (Sugar baking)" },
     { sec: 'Other automation', key: 'autoGS', type: 'check', def: 0, label: 'Auto Golden Switch during click buffs' },
     { sec: 'Other automation', key: 'autoGodzamok', type: 'check', def: 0, label: 'Auto-sell mines/factories for Godzamok' },
     { sec: 'Other automation', key: 'autoBank', type: 'check', def: 0, label: 'Auto-upgrade bank office' },
@@ -93,47 +88,43 @@
     // ---- Dragon
     { sec: 'Dragon', key: 'autoDragon', type: 'check', def: 0, label: 'Auto-upgrade dragon' },
     { sec: 'Dragon', key: 'petDragon', type: 'check', def: 0, label: 'Pet dragon until all drops unlocked' },
-    { sec: 'Dragon', key: 'autoDragonToggle', type: 'check', def: 0, label: 'Auto-set dragon auras' },
     { sec: 'Dragon', key: 'autoDragonAura0', type: 'choice', def: 0, label: 'First aura', labels: AURAS },
     { sec: 'Dragon', key: 'autoDragonAura1', type: 'choice', def: 0, label: 'Second aura', labels: AURAS },
     { sec: 'Dragon', key: 'autoDragonOrbs', type: 'check', def: 0, label: 'Sell Yous for golden cookies (Dragon Orbs)' },
     { sec: 'Dragon', key: 'orbLimit', type: 'check', def: 0, label: 'Limit Yous' },
     { sec: 'Dragon', key: 'orbMax', type: 'number', def: 200, min: 0, max: 100000, label: 'Max Yous' },
     // ---- Seasons
-    { sec: 'Seasons', key: 'defaultSeasonToggle', type: 'check', def: 0, label: 'Auto-buy default season when nothing else is needed' },
     { sec: 'Seasons', key: 'defaultSeason', type: 'choice', def: 0, label: 'Default season', labels: ['None', 'Business Day', 'Christmas', 'Easter', 'Halloween', "Valentine's Day"] },
     { sec: 'Seasons', key: 'freeSeason', type: 'choice', def: 1, label: 'Stay in free base season', labels: ['Off', 'Christmas & Business Day', 'All seasons'] },
     { sec: 'Seasons', key: 'autoEaster', type: 'check', def: 0, label: 'Switch to Easter during cookie storms if eggs missing' },
     { sec: 'Seasons', key: 'autoHalloween', type: 'check', def: 0, label: 'Switch to Halloween if wrinklers and cookies missing' },
     // ---- Bank
-    { sec: 'Bank', key: 'holdManBank', type: 'check', def: 0, label: 'Manual minimum bank' },
-    { sec: 'Bank', key: 'manBankMins', type: 'number', def: 0, min: 0, max: 1e9, label: 'Minutes of base CpS to keep' },
+    { sec: 'Bank', key: 'manBankMins', type: 'number', def: 0, min: 0, max: 1e9, label: 'Manual bank: minutes of base CpS to keep (0 = off)' },
     { sec: 'Bank', key: 'holdSEBank', type: 'check', def: 0, label: 'Keep bank for Spontaneous Edifice' },
     { sec: 'Bank', key: 'setHarvestBankPlant', type: 'choice', def: 0, label: 'Keep bank for harvesting', labels: ['Off', 'Bakeberry', 'Chocoroot', 'White chocoroot', 'Queenbeet', 'Duketater', 'Crumbspore', 'Doughshroom'] },
     { sec: 'Bank', key: 'setHarvestBankType', type: 'choice', def: 0, label: 'Harvest during', labels: ['No multiplier', 'Frenzy', 'Building special', 'Frenzy + building special'] },
     { sec: 'Bank', key: 'maxSpecials', type: 'number', def: 1, min: 1, max: 20, label: 'Building specials to plan for' },
     // ---- Other
     { sec: 'Other', key: 'FCshortcuts', type: 'check', def: 1, label: 'Keyboard shortcuts (a b c e r s w)' },
-    { sec: 'Other', key: 'simulatedGCPercent', type: 'choice', def: 1, label: 'Golden cookies clicked (for efficiency math)', labels: ['0%', '100%'] },
     // ---- Display
     { sec: 'Display', key: 'showMissedCookies', type: 'check', def: 0, label: 'Show missed golden cookies in info' },
     { sec: 'Display', key: 'numberDisplay', type: 'choice', def: 1, label: 'Number format', labels: ['Raw', 'Full names', 'Initials', 'SI units', 'Scientific'] },
     { sec: 'Display', key: 'fancyui', type: 'choice', def: 0, label: 'Infobox (timers)', labels: ['Off', 'Text only', 'Wheel only', 'Wheel & text'] },
-    { sec: 'Display', key: 'logging', type: 'check', def: 1, label: 'Log actions to console' },
-    { sec: 'Display', key: 'purchaseLog', type: 'check', def: 0, label: 'Log every auto-purchase' },
+    { sec: 'Display', key: 'logging', type: 'choice', def: 1, label: 'Console log', labels: ['Off', 'Actions', 'Actions + every purchase'] },
     { sec: 'Display', key: 'fpsModifier', type: 'choice', def: 2, label: 'Frame rate (fps)', labels: FPS_VALUES.map(String) },
     { sec: 'Display', key: 'trackStats', type: 'choice', def: 0, label: 'Track stats for graphs', labels: ['Off', 'Every 60s', 'Every 30m', 'Every 1h', 'Every 24h', 'On upgrades', 'Smart timing'] },
     { sec: 'Display', key: 'recommendedSettings', type: 'button', label: 'Apply recommended settings' },
     // ---- Sleepy extras (not in Frozen Cookies)
     { sec: 'Stock market trader (extra)', key: 'autoTrade', type: 'check', def: 0, label: 'Auto-trade stocks' },
+    { sec: 'Achievement goals (extra)', key: 'achMode', type: 'choice', def: 0, label: 'Work on', labels: ['Off', 'Fastest first', 'My list'] },
+    { sec: 'Achievement goals (extra)', key: 'achRisky', type: 'check', def: 0, label: 'Fastest first may use risky goals (lose a lump, reset seeds, Born again run)' },
+    { sec: 'Other automation', key: 'lumpReserve', type: 'number', def: 100, min: 0, max: 100000, label: 'Sugar lumps to keep (Sugar baking counts up to 100)' },
     { sec: 'Stock market trader (extra)', key: 'tradeMinProfit', type: 'number', def: 15, min: 1, max: 1000, label: 'Min expected profit %' },
     { sec: 'Stock market trader (extra)', key: 'tradeSpendPct', type: 'number', def: 50, min: 1, max: 100, label: 'Max % of spare cookies per tick' },
     { sec: 'Stock market trader (extra)', key: 'tradeUseTrend', type: 'check', def: 1, label: 'Use hidden trend (peeks at game data)' },
     { sec: 'Garden planter (extra)', key: 'autoGarden', type: 'check', def: 0, label: 'Auto-plant garden' },
     { sec: 'Garden planter (extra)', key: 'gardenMode', type: 'choice', def: 0, label: 'Mode', labels: ['Unlock new seeds', 'Farm one seed'] },
     { sec: 'Garden planter (extra)', key: 'gardenSeed', type: 'seed', def: 'auto', label: 'Farm seed' },
-    { sec: 'Garden planter (extra)', key: 'gardenHarvestMature', type: 'check', def: 1, label: 'Harvest payout plants when mature' },
-    { sec: 'Garden planter (extra)', key: 'gardenAutoSoil', type: 'check', def: 1, label: 'Switch soil automatically' }
   ];
   const OPT = {};
   for (const o of OPTIONS) OPT[o.key] = o;
@@ -142,15 +133,15 @@
   // speeds capped at the game's real 50 clicks/s limit.
   const RECOMMENDED = {
     autoClick: 1, cookieClickSpeed: 50, autoFrenzy: 1, frenzyClickSpeed: 50, autoGC: 1, autoReindeer: 1, autoFortune: 1,
-    autoBuy: 1, otherUpgrades: 1, autoBlacklistOff: 0, blacklist: 0, mineLimit: 1, mineMax: 500, factoryLimit: 1, factoryMax: 500, pastemode: 0,
-    autoAscendToggle: 0, autoAscend: 2, comboAscend: 0, HCAscendAmount: 0, autoBulk: 2, autoBuyAll: 1, autoWrinkler: 1, shinyPop: 0,
-    autoSL: 2, dragonsCurve: 2, sugarBakingGuard: 1, autoGS: 1, autoGodzamok: 1, autoBank: 1, autoBroker: 1, autoLoan: 1, minLoanMult: 777,
+    autoBuy: 1, otherUpgrades: 1, blacklist: 0, mineLimit: 1, mineMax: 500, factoryLimit: 1, factoryMax: 500,
+    autoAscend: 0, comboAscend: 0, HCAscendAmount: 0, autoBuyAll: 1, autoWrinkler: 1, shinyPop: 0,
+    autoSL: 2, dragonsCurve: 2, lumpReserve: 100, autoGS: 1, autoGodzamok: 1, autoBank: 1, autoBroker: 1, autoLoan: 1, minLoanMult: 777,
     autoWorshipToggle: 1,
-    towerLimit: 1, manaMax: 37, autoCasting: 1, minCpSMult: 7, comboChain: 1, autoSugarFrenzy: 0, minASFMult: 7777,
-    autoDragon: 1, petDragon: 1, autoDragonToggle: 1, autoDragonAura0: 3, autoDragonAura1: 15, autoDragonOrbs: 0, orbLimit: 0, orbMax: 200,
-    defaultSeasonToggle: 1, defaultSeason: 1, freeSeason: 1, autoEaster: 1, autoHalloween: 1,
-    holdManBank: 0, manBankMins: 0, holdSEBank: 0, setHarvestBankPlant: 0, setHarvestBankType: 3, maxSpecials: 1,
-    FCshortcuts: 1, simulatedGCPercent: 1, showMissedCookies: 0, numberDisplay: 1, fancyui: 1, logging: 1, purchaseLog: 0, fpsModifier: 2, trackStats: 0
+    towerLimit: 1, manaMax: 81, autoCasting: 1, minCpSMult: 7, comboChain: 1, autoSugarFrenzy: 0, minASFMult: 7777,
+    autoDragon: 1, petDragon: 1, autoDragonAura0: 3, autoDragonAura1: 15, autoDragonOrbs: 0, orbLimit: 0, orbMax: 200,
+    defaultSeason: 1, freeSeason: 1, autoEaster: 1, autoHalloween: 1,
+    manBankMins: 0, holdSEBank: 0, setHarvestBankPlant: 0, setHarvestBankType: 3, maxSpecials: 1,
+    FCshortcuts: 1, showMissedCookies: 0, numberDisplay: 1, fancyui: 1, logging: 1, fpsModifier: 2, trackStats: 0
   };
 
   // ================================================================== settings & persistent data
@@ -165,6 +156,15 @@
     const s = Object.assign(defaults(), saved.settings || {});
     if (s.autoCasting > 1) s.autoCasting = 1;                     // v2.0 had six cast modes; now one smart mode
     if (s.autoSugarFrenzy > 1) s.autoSugarFrenzy = 1;
+    // v2.7 merged on/off switches into the setting they controlled
+    const old = saved.settings || {};
+    if ('autoAscendToggle' in old && !old.autoAscendToggle) s.autoAscend = 0;
+    if ('defaultSeasonToggle' in old && !old.defaultSeasonToggle) s.defaultSeason = 0;
+    if ('holdManBank' in old && !old.holdManBank) s.manBankMins = 0;
+    if ('autoDragonToggle' in old && !old.autoDragonToggle) { s.autoDragonAura0 = 0; s.autoDragonAura1 = 0; }
+    if (old.purchaseLog && old.logging) s.logging = 2;
+    if ('achLumpReserve' in old) s.lumpReserve = old.achLumpReserve;
+    else if ('sugarBakingGuard' in old) s.lumpReserve = old.sugarBakingGuard ? 100 : 0;
     for (const k in s) if (!(k in OPT)) delete s[k];              // drop options that no longer exist
     const data = Object.assign({
       frenzyTimes: {}, lastHCAmount: 0, lastHCTime: Date.now(), prevLastHCTime: Date.now(), maxHCPercent: 0,
@@ -356,7 +356,7 @@
     const sp = list[Math.min(Math.max(0, Math.floor(start)), list.length - 1)];
     return sortedIndex(list, sp + endP - sp * endP);
   }
-  function gcPs(value) { return (value / (probabilitySpan('golden', 0, 0.5) / Game.fps)) * S.simulatedGCPercent; }
+  function gcPs(value) { return S.autoGC ? value / (probabilitySpan('golden', 0, 0.5) / Game.fps) : 0; }   // only counted when they get clicked
 
   // ---- expected golden cookie value (FC's model; odds by elder wrath level 0-3)
   function calculateChainValue(bank, cps, digit) {
@@ -400,7 +400,7 @@
     return Math.max(25, base * 7) * f + Math.max(25, base * 0.5) * c + Math.max(25, base * 666) * b + Math.max(25, base) * (1 - (f + c + b));
   }
   function reindeerCps(wrath) {
-    return (reindeerValue(wrath) / (probabilitySpan('reindeer', 0, 0.5) / Game.fps)) * S.simulatedGCPercent;
+    return S.autoReindeer ? reindeerValue(wrath) / (probabilitySpan('reindeer', 0, 0.5) / Game.fps) : 0;
   }
   function effectiveCps(delay, wrath, wrinklerCount) {
     wrath = wrath != null ? wrath : Game.elderWrath;
@@ -500,7 +500,7 @@
   function bestBank(minEfficiency) {
     const edifice = S.holdSEBank ? edificeBank() : 0;
     const harvest = S.setHarvestBankPlant ? harvestBank() : 0;
-    const manual = S.holdManBank ? manualBank() : 0;
+    const manual = S.manBankMins > 0 ? manualBank() : 0;
     const override = Math.max(edifice, harvest, manual);
     const levels = [0, luckyBank(), luckyFrenzyBank()].sort((a, b) => b - a)
       .map((c) => ({ cost: c, efficiency: cookieEfficiency(Game.cookies, c) }))
@@ -576,6 +576,7 @@
     if (!u.unlocked && !needed) return true;
     if (needed && needed.some((a) => a.type === 'wrinklers')) return true;
     if (needed && needed.some((a) => a.type === 'santa') && Game.season !== 'christmas' && !Game.UpgradesById[181].unlocked && !Game.prestige) return true;
+    if (u.season && R.forceSeason) return true;      // the achievement helper is holding a season
     if (u.season && (!haveAll(Game.season) || (u.season !== SEASON_KEYS[S.defaultSeason] && haveAll(u.season)))) return true;
     return false;
   }
@@ -654,7 +655,7 @@
   }
 
   function buildingStats() {
-    const bl = BLACKLISTS[S.blacklist] || BLACKLISTS[0];
+    const bl = BLACKLISTS[effBlacklist()] || BLACKLISTS[0];
     if (bl.buildings === true) return [];
     const blocked = new Set(bl.buildings);
     const M = grimoire();
@@ -682,7 +683,7 @@
   // Discount upgrades can get efficiency 1 through FC's price-reduction rule, so they are never pruned.
   const NO_PRUNE = new Set(['Toy workshop', 'Five-finger discount', "Santa's dominion", 'Faberge egg', 'Divine sales', 'Season savings', 'Divine discount']);
   function upgradeStats(bestSoFar) {
-    const bl = BLACKLISTS[S.blacklist] || BLACKLISTS[0];
+    const bl = BLACKLISTS[effBlacklist()] || BLACKLISTS[0];
     if (bl.upgrades === true) return [];
     const currentBank = bestBank(0).cost;
     const baseOrig = baseCps();
@@ -701,7 +702,7 @@
     for (const { u, cost, lb } of cands) {
       // Exact pruning: efficiency = cost/cps + cost/delta >= cost/cps, so a chain whose lower bound
       // already loses to the best option can never be picked. (Pastemode wants the worst, so no pruning.)
-      if (!S.pastemode && lb > best) {
+      if (lb > best) {
         out.push({ id: u.id, type: 'upgrade', purchase: u, name: u.dname || u.name, cost, delta_cps: 0, base_delta_cps: 0, efficiency: lb, pruned: true });
         continue;
       }
@@ -718,7 +719,7 @@
       // (even a no-op like Revoke Elder Covenant) looked like a gain. Measure both sides with the same bank.
       const delta = cpsNew - cpsSame;
       let eff;
-      if (u.season && S.defaultSeasonToggle && u.season === SEASON_KEYS[S.defaultSeason]) eff = cost / baseOrig;
+      if (u.season && S.defaultSeason && u.season === SEASON_KEYS[S.defaultSeason]) eff = cost / baseOrig;
       else if (priceReduction > cost) eff = 1;
       else eff = purchaseEfficiency(cost, delta, cpsOrig);
       if (eff < best) best = eff;
@@ -755,7 +756,6 @@
     } finally { simEnd(); }
     list.sort((a, b) => (a.efficiency !== b.efficiency ? a.efficiency - b.efficiency : a.delta_cps !== b.delta_cps ? b.delta_cps - a.delta_cps : a.cost - b.cost));
     W.caches.recommendationList = addScores(list);
-    if (S.pastemode) W.caches.recommendationList.reverse();
     // next purchase + chain target
     let purchase = null, target = null;
     for (const t of W.caches.recommendationList) {
@@ -822,7 +822,8 @@
   const clickTick = safe('autoClick', clickOnce);
   function updateClickRate() {
     let rate = 0;
-    if (S.autoFrenzy && hasClickBuff()) rate = Math.min(50, S.frenzyClickSpeed);
+    if (achNoClicks()) rate = 0;                      // Born again: Neverclick allows only 15 clicks
+    else if (S.autoFrenzy && hasClickBuff()) rate = Math.min(50, S.frenzyClickSpeed);
     else if (S.autoClick) rate = Math.min(50, S.cookieClickSpeed);
     if (rate === R.clickRateNow) return;
     if (R.clickTimer) clearInterval(R.clickTimer);
@@ -929,7 +930,7 @@
     if (S.autoSL === 1 && lumpRipe()) harvestLump();
     if (S.autoSL === 2) autoRigidel();
   }
-  function canSpendLump() { return S.sugarBakingGuard ? Game.lumps > 100 : Game.lumps > 0; }
+  function canSpendLump() { return Game.lumps > S.lumpReserve; }
 
   // ---- golden switch, Godzamok, bank office, brokers, loans
   // The switch costs an hour of CpS each time it's turned on, so only flip it when the boost over the rest of
@@ -1027,7 +1028,7 @@
   const OTHER_UPGRADES = ['Faberge egg', 'Wrinklerspawn', 'Omelette', '"egg"', 'Weighted sleighs', "Santa's bottomless bag", 'Dragon fang',
     'Dragon teddy bear', 'Sacrificial rolling pins', 'Green yeast digestives', 'Fern tea', 'Ichor syrup', 'Fortune #102'];
   function buyOtherUpgrades() {
-    if (!S.otherUpgrades || (BLACKLISTS[S.blacklist] || {}).upgrades === true) return;
+    if (!S.otherUpgrades || (BLACKLISTS[effBlacklist()] || {}).upgrades === true) return;
     for (const name of OTHER_UPGRADES) {
       const u = Game.Upgrades[name];
       if (!u) continue;
@@ -1040,19 +1041,18 @@
 
   // ---- seasons
   function autoEasterAction() {
-    if (!S.autoEaster || Game.season === 'easter' || haveAll('easter')) return;
+    if (!S.autoEaster || R.forceSeason || Game.season === 'easter' || haveAll('easter')) return;
     if (Game.hasBuff('Cookie storm') && Game.UpgradesById[181].unlocked) {
       if (Game.UpgradesById[209].buy(1)) logEvent('autoEaster', 'Swapped to Easter for the cookie storm');
     }
   }
   function autoHalloweenAction() {
-    if (!S.autoHalloween || ['valentines', 'easter', 'halloween'].includes(Game.season) || haveAll('halloween')) return;
+    if (!S.autoHalloween || R.forceSeason || ['valentines', 'easter', 'halloween'].includes(Game.season) || haveAll('halloween')) return;
     if (liveWrinklers().length > 0 && Game.UpgradesById[181].unlocked) {
       if (Game.UpgradesById[183].buy(1)) logEvent('autoHalloween', 'Swapping to Halloween season to use wrinklers');
     }
   }
   function autoBlacklistOffAction() {
-    if (!S.autoBlacklistOff) return;
     const before = S.blacklist;
     if (S.blacklist === 1 && Game.cookiesEarned >= 1e6) S.blacklist = 0;
     else if (S.blacklist === 2 && Game.cookiesEarned >= 1e9) S.blacklist = 0;
@@ -1116,7 +1116,7 @@
     // Elder Pledge ignores the bank (FC rule) but still has to be affordable; FC "bought" it even when it
     // wasn't, which here spun the buy loop for its full 30 ms every tick.
     if (!(Game.cookies >= (isPledge ? 0 : delay) + rec.cost)) return false;
-    if (!(S.pastemode || isFinite(chain.efficiency))) return false;
+    if (!isFinite(chain.efficiency)) return false;
     const cookiesBefore = Game.cookies;
     const prestigeGain = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned)) - Math.floor(Game.HowMuchPrestige(Game.cookiesReset));
     if (prestigeGain < 1 && Game.Has('Inspired checklist') && S.autoBuyAll && rec.type === 'upgrade' && Game.cookies >= rec.cost && !NO_BUYALL.has(rec.purchase.name)) {
@@ -1133,7 +1133,7 @@
     if (COV_PAIR[rec.purchase.name]) { R.covenantFlip = { name: rec.purchase.name, t: Date.now() }; logEvent('Autobuy', 'Bought ' + rec.purchase.name); }
     if (S.trackStats === 5 && rec.type === 'upgrade') saveStats();
     else if (S.trackStats === 6) R.delayPurchaseCount++;
-    if (S.purchaseLog) logEvent('Store', 'Autobought ' + rec.purchase.name + ' for ' + B(rec.cost) + ', resulting in ' + B(rec.delta_cps) + ' CPS.');
+    if (S.logging === 2) logEvent('Store', 'Autobought ' + rec.purchase.name + ' for ' + B(rec.cost) + ', resulting in ' + B(rec.delta_cps) + ' CPS.');
     invalidate();
     return true;
   }
@@ -1177,7 +1177,8 @@
     setTimeout(() => { buyLuckyUpgrades(); Game.ClosePrompt(); Game.Reincarnate(1); R.ascendPending = false; }, 10000);
   }
   function autoAscendAction() {
-    if (!S.autoAscendToggle || !S.autoAscend || R.ascendPending || Game.OnAscend || Game.AscendTimer || Game.prestige <= 0) return;
+    if (!S.autoAscend || R.ascendPending || Game.OnAscend || Game.AscendTimer || Game.prestige <= 0) return;
+    if (R.ascendPolicy === 'stay' || (R.ascendPolicy === 'born' && Game.ascensionMode === 1)) return;   // an achievement goal needs this run to keep going
     if (S.autoAscend === 3) { luckySevensAscend(); return; }   // the right number only lasts moments: no combo check
     if (!(S.comboAscend || cpsBonus() < S.minCpSMult)) return;
     const reset = Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned + wrinklerValue() + chocolateValue());
@@ -1244,7 +1245,7 @@
           continue;
         }
         sh.pop();
-      } else if (sh.type === 'reindeer' && S.autoReindeer) sh.pop();
+      } else if (sh.type === 'reindeer' && (S.autoReindeer || R.forceSeason === 'christmas')) sh.pop();
     }
   }
   function autoFortuneAction() {
@@ -1292,6 +1293,7 @@
   const origAscend = Game.Ascend;
   function fcAscend(bypass) {
     if (bypass && !Game.OnAscend && !Game.AscendTimer && !R.skipCashOut) cashOut();
+    if (bypass && !Game.OnAscend && !Game.AscendTimer) achBeforeAscend();   // after cashing out: the loan's down payment comes out of the bank
     R.skipCashOut = false;
     return origAscend.apply(this, arguments);
   }
@@ -1310,8 +1312,6 @@
     return out;
   }
   function onReincarnate() {
-    if (S.autoBulk === 1 && l('storeBulk10')) l('storeBulk10').click();
-    if (S.autoBulk === 2 && l('storeBulk100')) l('storeBulk100').click();
     invalidate();
   }
 
@@ -1703,7 +1703,7 @@
     }
   }
   function autoDragonAuraAction() {
-    if (!S.autoDragonToggle || !Game.Has('A crumbly egg')) return;
+    if ((!S.autoDragonAura0 && !S.autoDragonAura1) || !Game.Has('A crumbly egg')) return;
     const a0 = S.autoDragonAura0, a1 = S.autoDragonAura1;
     if (a0 && a0 === a1) { S.autoDragonAura1 = 0; logEvent('autoDragon', "Can't set both auras to the same one!"); refreshPanel(); return; }
     if (a0 && Game.dragonLevel >= 5 && Game.dragonAura !== a0 && Game.dragonAura2 !== a0) {
@@ -2094,6 +2094,16 @@
     }
     return farmPick;
   }
+  // Green, aching thumb counts every mature plant harvested: grow the quickest-maturing seed and harvest it.
+  function harvestChoice(M) {
+    let best = null;
+    for (const p of M.plantsById) {
+      if (!p.unlocked || !p.plantable || p.weed || p.fungus) continue;
+      const t = ticksToMature(p);
+      if (!best || t < best.t || (t === best.t && M.getCost(p) < M.getCost(best.seed))) best = { seed: p, t };
+    }
+    return best ? { seed: best.seed, soil: 'fertilizer', harvest: true, rate: 0 } : null;
+  }
   function farmSeed(M) { const c = farmChoice(M, gardenBounds(M)); return c ? c.seed : null; }
   function setSoil(M, key) {
     const soil = M.soils[key];
@@ -2107,7 +2117,8 @@
     if (!M || !M.plot) { gardenStatus = 'no garden (needs a level 1 Farm)'; return; }
     if (M.freeze) { gardenStatus = 'garden is frozen'; return; }
     const b = gardenBounds(M);
-    let mode = S.gardenMode === 0 ? 'unlock' : 'farm', grid = null, plan = null, seed = null;
+    const goalMode = R.gardenGoal;                     // set by the achievement goals ('unlock' or 'harvest')
+    let mode = goalMode === 'unlock' ? 'unlock' : goalMode === 'harvest' ? 'farm' : S.gardenMode === 0 ? 'unlock' : 'farm', grid = null, plan = null, seed = null;
     if (mode === 'unlock') {
       const sig = M.plantsById.map((p) => (p.unlocked ? 1 : 0)).join('') + '|' + M.parent.level;
       if (sig !== gardenPlanSig) {
@@ -2121,12 +2132,12 @@
     }
     let farm = null;
     if (mode === 'farm') {
-      farm = farmChoice(M, b);
+      farm = goalMode === 'harvest' ? harvestChoice(M) : farmChoice(M, b);
       seed = farm ? farm.seed : null;
       grid = emptyGrid();
       if (seed) for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) grid[y][x] = seed.key;
     }
-    if (S.gardenAutoSoil) {
+    {
       // Mutations only come from mature parents, so grow them on fast Fertilizer and switch to Wood chips
       // (3x mutations) once they're all grown. Harvest crops grow on Fertilizer; passive ones sit in Clay.
       const n = M.parent.amount;
@@ -2154,7 +2165,7 @@
         if (p.key === want) {
           if (plan && plan.spores && age >= 100 - p.ageTick - p.ageTickR) M.harvest(x, y);
           // only plants that pay out when harvested; passive ones (Baker's wheat...) live out their life
-          else if (mode === 'farm' && S.gardenHarvestMature && HARVEST_PAY[p.key] && age >= p.mature) M.harvest(x, y);
+          else if (mode === 'farm' && (HARVEST_PAY[p.key] || goalMode === 'harvest') && age >= p.mature) M.harvest(x, y);
           continue;
         }
         M.harvest(x, y);
@@ -2169,6 +2180,260 @@
     if (mode === 'unlock' && plan) gardenStatus = 'hunting ' + M.plants[plan.target].name + ' (' + plan.slots + ' slots, ~' + timeDisplay(plan.minutes * 60) + ' expected)';
     else if (seed) gardenStatus = 'farming ' + seed.name + (farm && farm.rate ? ' (about +' + B(farm.rate) + ' cookies/s)' : '') + (S.gardenMode === 0 ? ' (nothing left to unlock)' : '');
     else gardenStatus = 'no seed to plant';
+  }
+
+  // ================================================================== Achievement goals (Sleepy extra)
+  // Every missing achievement gets an estimate of how long it will take and, where the add-on can work on it,
+  // a helper. "Fastest first" works on all automatable goals, settling conflicts (ascend soon vs. stay in
+  // one long run, which garden job, ...) in favour of the quickest one; "My list" does the same for the
+  // achievements you picked. Goals marked risky (lose a lump, reset your seeds, a Born again detour) are only
+  // used in Fastest first when "Risky goals" is on; picking one yourself counts as saying yes.
+  const achInfo = { lines: [], goals: [], top: [] };
+  const won = (name) => !!(Game.Achievements[name] && Game.Achievements[name].won);
+  const lumpSec = () => Math.max(1, Game.lumpRipeAge / 1000);
+  const spareLumps = () => Math.max(0, Game.lumps - S.lumpReserve);
+  const toLevel = (b, n) => Math.max(0, n * (n + 1) / 2 - b.level * (b.level + 1) / 2);   // lumps from b.level to n
+  const avgShimmer = (type) => {
+    const st = Game.shimmerTypes[type]; if (!st || !st.getMinTime) return null;
+    const me = { wrath: 0, type, force: '' };
+    return (st.getMinTime(me) + st.getMaxTime(me)) / 2 / Game.fps;
+  };
+
+  // ---- the goal list. est(): seconds left (Infinity = not possible right now, null = no good estimate)
+  function buildGoals() {
+    const M = grimoire(), G = garden(), Bk = market();
+    const cps = Math.max(1, Game.cookiesPs);
+    const out = [];
+    const add = (name, g) => { if (Game.Achievements[name] && !won(name) && Game.CountsAsAchievementOwned(Game.Achievements[name].pool)) out.push(Object.assign({ name }, g)); };
+
+    // sugar lump levels: the shared lump pool is spent cheapest-first, so each estimate is cumulative
+    const levels = Game.ObjectsById.filter((b) => b.levelAchiev10 && b.level < 10).map((b) => ({ b, cost: toLevel(b, 10) })).sort((a, b) => a.cost - b.cost);
+    let cum = 0;
+    for (const { b, cost } of levels) {
+      cum += cost;
+      add(b.levelAchiev10.name, { group: 'lumps', part: 'levels', building: b, est: Math.max(0, cum - spareLumps()) * lumpSec(), how: b.name + ' level ' + b.level + ' -> 10 (' + cost + ' lumps)' });
+    }
+    add("Year's worth of cavities", { est: Math.max(0, 365 - Game.lumpsTotal) * lumpSec(), how: Game.lumpsTotal + '/365 lumps harvested', passive: true });
+    add('Maillard reaction', { est: 50 * lumpSec() / (1 + Game.auraMult("Dragon's Curve")), how: 'each lump has a 1 in 50 chance to be caramelized (Dragon\'s Curve doubles the rolls)', passive: true });
+    add('Hand-picked', { part: 'handPicked', risky: true, est: Math.max(0, Game.lumpMatureAge - (Date.now() - Game.lumpT)) / 1000 + 0.5 * lumpSec(), how: 'harvest a mature, unripe lump: 50% chance, otherwise it is lost' });
+
+    if (M) {
+      const key = ["haggler's charm", 'conjure baked goods'].sort((a, b) => M.getSpellCost(M.spells[a]) - M.getSpellCost(M.spells[b]))[0];
+      const regen = 0.002 * Game.fps * Math.sqrt(M.magicM / Math.max(M.magicM, 100));
+      add('A wizard is you', { part: 'spells', est: Math.max(0, 999 - M.spellsCastTotal) * M.getSpellCost(M.spells[key]) / Math.max(regen, 1e-9), how: M.spellsCastTotal + '/999 spells' });
+    }
+    const gcT = avgShimmer('golden');
+    add("Black cat's paw", { est: gcT ? Math.max(0, 7777 - Game.goldenClicks) * gcT : null, how: Game.goldenClicks + '/7,777 natural golden cookies', passive: true });
+    const rdT = avgShimmer('reindeer');
+    add('Reindeer sleigher', { part: 'christmas', est: rdT ? Math.max(0, 200 - Game.reindeerClicked) * rdT : null, how: Game.reindeerClicked + '/200 reindeer (stays in Christmas)' });
+    add("Baby it's old outside", { manual: true, est: 300, how: 'during Christmas, click and hold an elf grandma in the Grandma row' });
+    add('Wrinkler poker', { manual: true, est: 120, how: 'click one wrinkler about once a second, 50 times (turn wrinkler popping off)' });
+
+    if (G) {
+      const plan = gardenPlan, left = G.plantsN - G.plantsUnlockedN;
+      add('Keeper of the conservatory', { group: 'garden', part: 'unlock', est: left * (plan && plan.minutes ? plan.minutes * 60 : 7200), how: G.plantsUnlockedN + '/' + G.plantsN + ' seeds' });
+      const h = harvestChoice(G), tiles = (() => { const b = gardenBounds(G); let n = 0; for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) if (G.isTileUnlocked(x, y)) n++; return n; })();
+      add('Green, aching thumb', { group: 'garden', part: 'harvest', est: h ? Math.max(0, 1000 - G.harvestsTotal) / Math.max(1, tiles) * ticksToMature(h.seed) * 180 : null, how: G.harvestsTotal + '/1,000 harvests' });
+      add('Seedless to nay', { part: 'seedless', risky: true, est: left ? left * 7200 : 60, how: 'sacrifice the garden once all ' + G.plantsN + ' seeds are unlocked (seeds reset, +10 lumps)' });
+    }
+
+    if (Bk) {
+      const unit = Game.cookiesPsRawHighest, oh = 1 + 0.01 * (20 * Math.pow(0.95, Bk.brokers));
+      const spare = Math.max(0, Game.cookies - delayAmount());
+      const fillCost = (n) => Bk.goodsById.reduce((s, g) => s + Math.max(0, n - g.stock) * g.val * oh * unit, 0);
+      const fits = (n) => Bk.goodsById.every((g) => g.active && Bk.getGoodMaxStock(g) >= n);
+      const saveFor = (c) => Math.max(0, c - spare) / cps;
+      const bbFits = Bk.goodsById.some((g) => g.active && Bk.getGoodMaxStock(g) - g.stock >= Math.ceil(86400 / (g.val * oh)));
+      add('Buy buy buy', { part: 'stocks', est: bbFits ? saveFor(86400 * unit * oh) : null, how: bbFits ? 'one $86,400 purchase' : 'needs more warehouse space (office upgrades)' });
+      add('Rookie numbers', { part: 'stocks', est: fits(100) ? saveFor(fillCost(100)) : null, how: '100 of every stock' });
+      add('No nobility in poverty', { part: 'stocks', est: fits(500) ? saveFor(fillCost(500)) : null, how: '500 of every stock (needs big warehouses)' });
+      const cur = Game.Objects.Cursor;
+      add('Pyramid scheme', { group: 'ascend', policy: 'stay', part: 'levels12', est: Math.max(0, toLevel(cur, 12) - spareLumps()) * lumpSec(), how: 'top office in one run: Cursor level 12 (now ' + cur.level + ') and 1,850 cursors in total' });
+      add('Liquid assets', { group: 'ascend', policy: 'stay', est: null, how: '$' + B(Bk.profit) + ' of $10M stock profit in one run' });
+      add('Debt evasion', { part: 'debt', est: Bk.officeLevel >= 2 ? 60 : Math.max(0, toLevel(cur, 4) - spareLumps()) * lumpSec(), how: 'take Loan 1 right before ascending (office level 2, now ' + Bk.officeLevel + ')' });
+    }
+
+    const step = Math.max(1, Math.pow(2, Math.floor(Math.log2(Game.prestige || 1)) - 52));
+    const perRun = Math.max(1, 3 * Game.prestige * Game.prestige * step) * 1e12 / cps;
+    add('Reincarnation', { group: 'ascend', policy: 'soon', part: 'farm', est: Math.max(0, 100 - Game.resets) * perRun, how: Game.resets + '/100 ascensions (each must raise your prestige level)' });
+    add('And a little extra', { group: 'ascend', policy: 'stay', est: Math.max(0, 1e72 - Game.cookiesEarned) / cps, how: B(Game.cookiesEarned) + ' of 1 trevigintillion in one run' });
+    add('Neverclick', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: 3600, how: 'Born again run: 1 million cookies with 15 clicks' });
+    add('Hardcore', { group: 'ascend', policy: 'born', part: 'born', risky: true, est: 3 * 3600, how: 'Born again run: 1 billion cookies with no upgrades' });
+    // the factory dungeon isn't in the game ("not yet" in main.js), and its achievements don't count
+    return out;
+  }
+
+  // ---- which goals are being worked on
+  function selectGoals() {
+    const all = buildGoals();
+    const rank = (g) => (g.est === null ? 1e300 : g.est);
+    all.sort((a, b) => rank(a) - rank(b));
+    achInfo.goals = all;
+    let pick = [];
+    if (S.achMode === 1) pick = all.filter((g) => !g.manual && !g.passive && g.est !== Infinity && (S.achRisky || !g.risky));
+    else if (S.achMode === 2) pick = all.filter((g) => (D.achList || []).includes(g.name) && !g.manual);
+    // conflicts: one ascension policy and one garden job, decided by the quickest goal that needs it
+    const firstOf = (grp) => pick.find((g) => g.group === grp);
+    const asc = firstOf('ascend'), gar = firstOf('garden');
+    pick = pick.filter((g) => (g.group !== 'ascend' || g.policy === (asc && asc.policy)) && (g.group !== 'garden' || g === gar));
+    achInfo.top = pick;
+    R.ascendPolicy = asc ? asc.policy : null;
+    R.gardenGoal = gar ? gar.part : null;
+    R.forceSeason = pick.some((g) => g.part === 'christmas') ? 'christmas' : null;
+    const parts = new Set(pick.map((g) => g.part));
+    if (pick.some((g) => g.part === 'levels')) parts.add('levels');
+    return parts;
+  }
+
+  // ---- Reincarnation: from the Ascend screen, reincarnate, then ascend again the moment it counts
+  const FARM = { active: false, quick: false, seenAt: 0, rebornAt: 0, onScreen: false, need: 0 };
+  function onAscendScreen(parts) {
+    const now = Date.now();
+    if (!FARM.seenAt) FARM.seenAt = now;
+    FARM.onScreen = true;
+    const wantBorn = parts.has('born') && R.ascendPolicy === 'born';
+    if (wantBorn && Game.nextAscensionMode !== 1) { Game.nextAscensionMode = 1; R.bornDetour = true; logEvent('Achievements', 'Next run will be Born again (Neverclick, Hardcore)'); }
+    if (!wantBorn && R.bornDetour && Game.nextAscensionMode === 1) { Game.nextAscensionMode = 0; R.bornDetour = false; logEvent('Achievements', 'Next run is a normal run again'); }
+    FARM.active = parts.has('farm') && !wantBorn;
+    if (R.ascendPending) return;                       // auto-ascend reincarnates by itself
+    if (!FARM.active && !R.achAscended) return;        // you ascended yourself: the upgrade screen is yours
+    const wait = R.achAscended || FARM.quick ? 1500 : 30000;   // the first time: 30 s to spend heavenly chips
+    if (now - FARM.seenAt < wait) return;
+    R.achAscended = false;
+    Game.ClosePrompt(); Game.Reincarnate(1);
+  }
+  function inRun(parts) {
+    const now = Date.now();
+    if (FARM.onScreen) { FARM.onScreen = false; FARM.rebornAt = now; }
+    FARM.seenAt = 0;
+    if (Game.ascensionMode === 0) R.bornDetour = false;
+    // a finished Born again detour: ascend back to a normal run
+    if (Game.ascensionMode === 1 && R.bornDetour && !parts.has('born') && !R.ascendPending && now - FARM.rebornAt > 2000) {
+      logEvent('Achievements', 'Born again goals done, ascending back to a normal run');
+      R.achAscended = true; Game.ClosePrompt(); Game.Ascend(1); return;
+    }
+    if (!FARM.active || !parts.has('farm') || Game.AscendTimer || R.ascendPending || now - FARM.rebornAt < 2000) return;
+    const p = Math.floor(Game.HowMuchPrestige(Game.cookiesReset + Game.cookiesEarned));
+    if (!(p > Game.prestige)) {                        // only an ascension that raises your prestige level counts
+      const step = Math.max(1, Math.pow(2, Math.floor(Math.log2(Game.prestige || 1)) - 52));
+      FARM.need = Math.max(1, 3 * Game.prestige * Game.prestige * step) * 1e12;
+      return;
+    }
+    FARM.need = 0; FARM.quick = true;
+    logEvent('Achievements', 'Ascension ' + (Game.resets + 1) + '/100');
+    R.achAscended = true; Game.ClosePrompt(); Game.Ascend(1);
+  }
+  // Debt evasion: from the Ascend override, right before ascending (after cashing out)
+  function achBeforeAscend() {
+    if (!R.achParts || !R.achParts.has('debt')) return;
+    const Bk = market();
+    if (Bk && Bk.officeLevel >= 2 && Bk.takeLoan(1)) logEvent('Achievements', 'Took Loan 1 before ascending (Debt evasion)');
+  }
+
+  // ---- Neverclick + Hardcore: in a Born again run, at most 15 clicks and no upgrades (your settings stay as they are)
+  function bornActive() { return Game.ascensionMode === 1 && !!(R.achParts && R.achParts.has('born')); }
+  function achNoClicks() { return bornActive() && !won('Neverclick') && Game.cookieClicks <= 15; }
+  function achHardcore() { return bornActive() && !won('Hardcore') && Game.UpgradesOwned === 0; }
+  function effBlacklist() { return achHardcore() ? 2 : S.blacklist; }
+  function bornAgainStep() {
+    if (achNoClicks() && Game.cookieClicks < 15 && Game.cookies < 15 && Game.Objects.Cursor.amount === 0 && Date.now() - (R.achLastClick || 0) > 400) {
+      R.achLastClick = Date.now();
+      const orig = Game.playCookieClickSound; Game.playCookieClickSound = noop;
+      try { Game.ClickCookie(); } finally { Game.playCookieClickSound = orig; }
+    }
+  }
+
+  function spellsStep() {
+    const M = grimoire();
+    if (!M || M.magic < M.magicM - 0.01 || combo2.state) return;
+    const n0 = nextSpellName(0);
+    if (isGood(n0) || n0 === 'Lucky' || n0 === 'Sugar Lump') return;   // Smart Grimoire is saving that one
+    const key = ["haggler's charm", 'conjure baked goods'].sort((a, b) => M.getSpellCost(spellById(a)) - M.getSpellCost(spellById(b)))[0];
+    if (affordable(key)) cast(key, 'Cast ' + spellById(key).name + ' for A wizard is you (' + (M.spellsCastTotal + 1) + '/999)');
+  }
+  function christmasStep() {
+    if (Game.season === 'christmas' || !Game.seasons || !Game.seasons.christmas) return;
+    const u = Game.Upgrades[Game.seasons.christmas.trigger];
+    if (u && u.unlocked && !u.bought && Game.cookies >= u.getPrice() && u.buy(1)) logEvent('Achievements', 'Switched to Christmas for reindeer');
+  }
+  function handPickedStep() {
+    if (!Game.canLumps()) return;
+    const age = Date.now() - Game.lumpT;
+    if (age >= Game.lumpMatureAge && age < Game.lumpRipeAge) {
+      Game.clickLump();
+      logEvent('Achievements', won('Hand-picked') ? 'Early harvest worked: Hand-picked' : 'Early harvest gave nothing; trying again with the next lump');
+    }
+  }
+  function seedlessStep() {
+    const G = garden();
+    if (!G || G.plantsUnlockedN < G.plantsN || G.freeze) return;
+    G.convert();
+    logEvent('Achievements', 'Sacrificed the garden for Seedless to nay (+10 sugar lumps)');
+  }
+  function stocksStep() {
+    const Bk = market();
+    if (!Bk || !(Game.cookiesPsRawHighest > 0)) return;
+    const unit = Game.cookiesPsRawHighest, overhead = 1 + 0.01 * (20 * Math.pow(0.95, Bk.brokers));
+    const spare = () => Math.max(0, Game.cookies - delayAmount());
+    const goods = Bk.goodsById;
+    const want = new Set(achInfo.top.map((g) => g.name));
+    const fill = (target, name) => {
+      if (!want.has(name) || won(name) || goods.some((g) => !g.active || Bk.getGoodMaxStock(g) < target)) return false;
+      let cost = 0;
+      for (const g of goods) cost += Math.max(0, target - g.stock) * g.val * overhead * unit;
+      if (cost > spare() || goods.some((g) => g.stock < target && g.last === 2)) return false;
+      for (const g of goods) if (g.stock < target) Bk.buyGood(g.id, target - g.stock);
+      logEvent('Achievements', 'Bought ' + target + ' of every stock for ' + name);
+      return true;
+    };
+    if (want.has('Buy buy buy') && !won('Buy buy buy')) {
+      let best = null;
+      for (const g of goods) {
+        if (!g.active || g.last === 2) continue;
+        const room = Bk.getGoodMaxStock(g) - g.stock, n = Math.ceil(86400 / (g.val * overhead) * 1.001);
+        if (n <= room && n * g.val * overhead * unit <= spare() && (!best || n * g.val < best.n * best.g.val)) best = { g, n };
+      }
+      if (best && Bk.buyGood(best.g.id, best.n)) logEvent('Achievements', 'Bought ' + best.n + ' ' + best.g.symbol + ' in one purchase for Buy buy buy');
+    }
+    fill(100, 'Rookie numbers') || fill(500, 'No nobility in poverty');
+  }
+  // spare lumps (above the reserve) go to the quickest targeted level goal; Cursor first when the top office is a goal
+  function levelsStep(parts) {
+    if (!Game.canLumps()) return;
+    let pick = null;
+    if (parts.has('levels12') && Game.Objects.Cursor.level < 12) pick = Game.Objects.Cursor;
+    if (!pick) { const g = achInfo.top.find((x) => x.part === 'levels' && x.building.level < 10); pick = g ? g.building : null; }
+    if (!pick) return;
+    const cost = pick.level + 1;
+    if (Game.lumps - cost < S.lumpReserve) return;
+    Game.lumps -= cost;                                // levelUp(free) skips both the prompt and the payment
+    pick.levelUp(true);
+    logEvent('Achievements', pick.name + ' -> level ' + pick.level + ' (' + cost + ' lumps)');
+    invalidate();
+  }
+
+  function achievementAction() {
+    const parts = S.achMode ? selectGoals() : new Set();
+    if (!S.achMode) { achInfo.top = []; R.ascendPolicy = null; R.gardenGoal = null; R.forceSeason = null; }
+    R.achParts = parts;
+    if (Game.OnAscend) { onAscendScreen(parts); return; }
+    if (Game.AscendTimer) return;
+    inRun(parts);
+    if (parts.has('born')) bornAgainStep();
+    if (parts.has('spells')) spellsStep();
+    if (parts.has('christmas')) christmasStep();
+    if (parts.has('handPicked')) handPickedStep();
+    if (parts.has('seedless')) seedlessStep();
+    if (parts.has('stocks')) stocksStep();
+    if (parts.has('levels') || parts.has('levels12')) levelsStep(parts);
+  }
+  // for the menu: list every missing achievement with its estimate
+  function achRefreshList() { achInfo.goals = buildGoals().sort((a, b) => (a.est === null ? 1e300 : a.est) - (b.est === null ? 1e300 : b.est)); }
+  function achToggle(name) {
+    const L = D.achList || (D.achList = []);
+    const i = L.indexOf(name);
+    if (i >= 0) L.splice(i, 1); else L.push(name);
+    save(); refreshPanel();
   }
 
   // ================================================================== in-game menu (FC style: replaces the Info button)
@@ -2213,95 +2478,89 @@
   const FRENZY_PROMPT = 'What CpS multiplier should trigger this? (e.g. "7" will trigger during a Frenzy, "1" prevents triggering during a clot)';
   const CONTROLS = [
     { head: 'Auto clicking:' },
-    { key: 'autoClick', hint: 'Auto-click big cookie and set speed.', display: ON_OFF('Autoclick'),
+    { key: 'autoClick', hint: 'Auto-click the big cookie.', display: ON_OFF('Autoclick'),
       extra: num('cookieClickSpeed', ' clicks/sec', 'Autoclicking!', 'How many times per second do you want to click? (The game ignores scripted clicks faster than 50 per second.)', 1, 50) },
-    { key: 'autoFrenzy', hint: 'Auto-click for click frenzies.', display: ON_OFF('Autofrenzy'),
+    { key: 'autoFrenzy', hint: 'Click faster during click buffs.', display: ON_OFF('Autofrenzy'),
       extra: num('frenzyClickSpeed', ' clicks/sec', 'Autoclicking!', 'How many times per second do you want to click during click frenzies? (50 max)', 1, 50) },
-    { key: 'autoGC', hint: 'Auto-click golden/wrath cookies (leaves Hand of Fate backfires like Clot and Ruin alone).', display: ON_OFF('Autoclick GC') },
-    { key: 'autoReindeer', hint: 'Auto-click reindeer.', display: ON_OFF('Autoclick Reindeer') },
-    { key: 'autoFortune', hint: 'Auto-click fortunes in news ticker.', display: ON_OFF('Auto Fortune') },
+    { key: 'autoGC', hint: 'Click golden and wrath cookies (leaves Hand of Fate backfires like Clot and Ruin alone). The buying math only counts their value when this is on.', display: ON_OFF('Autoclick GC') },
+    { key: 'autoReindeer', hint: 'Click reindeer.', display: ON_OFF('Autoclick Reindeer') },
+    { key: 'autoFortune', hint: 'Click fortunes in the news ticker.', display: ON_OFF('Auto Fortune') },
     { head: 'Auto-buying:' },
-    { key: 'autoBuy', hint: 'Auto-buy most efficient building/upgrade.', display: ON_OFF('AutoBuy') },
-    { key: 'otherUpgrades', hint: "Buy upgrades that don't boost CpS directly.", display: ON_OFF('Other Upgrades') },
-    { key: 'autoBlacklistOff', hint: 'Turn off blacklist when goal is met.', display: ON_OFF('Auto Blacklist') },
-    { key: 'blacklist', hint: 'Blacklist: Restrict purchases for achievements or challenges.', display: ['Blacklist OFF', 'Blacklist Mode SPEEDRUN', 'Blacklist Mode HARDCORE', 'Blacklist Mode GRANDMAPOCALYPSE', 'Blacklist Mode NO BUILDINGS'] },
-    { key: 'mineLimit', hint: 'Limit mines for Godzamok combos.', display: ON_OFF('Mine Limit'), extra: num('mineMax', ' Mines', 'Mine Cap!', 'How many Mines should autobuy stop at?', 0, 100000) },
-    { key: 'factoryLimit', hint: 'Limit factories for Godzamok combos.', display: ON_OFF('Factory Limit'), extra: num('factoryMax', ' Factories', 'Factory Cap!', 'How many Factories should autobuy stop at?', 0, 100000) },
-    { key: 'pastemode', hint: 'Buy least efficient option (⚠️ not recommended).', display: ON_OFF('Pastemode') },
-    { head: 'Other automation:' },
-    { key: 'autoBulk', hint: 'Set bulk buy after ascension.', display: ['Auto Bulkbuy OFF', 'Auto Bulkbuy x10', 'Auto Bulkbuy x100'] },
-    { key: 'autoBuyAll', hint: 'Auto-buy all upgrades until a chip is earned.', display: ON_OFF('Auto Buy All Upgrades') },
-    { key: 'autoAscendToggle', hint: 'Auto-ascend at target chips (⚠️ skips upgrade screen).', display: ON_OFF('Auto Ascend') },
-    { key: 'autoAscend', hint: 'Choose auto-ascend method. Lucky 7s: ascend the moment your new prestige level has the 7s the next Lucky upgrade needs (1, 2 or 4), then buy it.', display: ['Auto-ascend OFF', 'Auto-ascend at SET amount', 'Auto-ascend when prestige is DOUBLED', 'Auto-ascend for LUCKY 7s'],
+    { key: 'autoBuy', hint: 'Buy the most efficient building or upgrade.', display: ON_OFF('AutoBuy') },
+    { key: 'otherUpgrades', hint: "Also buy upgrades that don't raise CpS directly.", display: ON_OFF('Other Upgrades') },
+    { key: 'blacklist', hint: 'Restrict purchases for a challenge. Turns itself off once its goal is met.', display: ['Blacklist OFF', 'Blacklist SPEEDRUN', 'Blacklist HARDCORE', 'Blacklist GRANDMAPOCALYPSE', 'Blacklist NO BUILDINGS'] },
+    { key: 'mineLimit', hint: 'Cap mines (keeps Godzamok sales cheap).', display: ON_OFF('Mine Limit'), extra: num('mineMax', ' Mines', 'Mine Cap!', 'How many Mines should autobuy stop at?', 0, 100000) },
+    { key: 'factoryLimit', hint: 'Cap factories (keeps Godzamok sales cheap).', display: ON_OFF('Factory Limit'), extra: num('factoryMax', ' Factories', 'Factory Cap!', 'How many Factories should autobuy stop at?', 0, 100000) },
+    { key: 'autoBuyAll', hint: 'Right after ascending, buy every upgrade until the first heavenly chip.', display: ON_OFF('Buy All Upgrades Early') },
+    { head: 'Ascending:' },
+    { key: 'autoAscend', hint: '⚠️ Skips the upgrade screen. Lucky 7s: ascends the moment your new prestige level has the 7s the next Lucky upgrade needs (1, 2 or 4), then buys it.', display: ['Auto-ascend OFF', 'Auto-ascend at SET chips', 'Auto-ascend when prestige DOUBLES', 'Auto-ascend for LUCKY 7s'],
       extra: num('HCAscendAmount', ' heavenly chips', 'Autoascending!', 'How many heavenly chips do you want to auto-ascend at?', 0, 1e300) },
-    { key: 'comboAscend', hint: 'Allow auto-ascend while a Frenzy of at least X is running.', display: ON_OFF('Ascend during combo'),
-      extra: num('minCpSMult', ' minimum Frenzy', 'Autoascending!', FRENZY_PROMPT, 0, 1e300, 'x') },
-    { key: 'autoWrinkler', hint: 'Auto-pop wrinklers.', display: ['Autopop Wrinklers OFF', 'Autopop Wrinklers EFFICIENTLY', 'Autopop Wrinklers INSTANTLY'] },
-    { key: 'shinyPop', hint: 'Protect shiny wrinklers (⚠️ disables Elder Pledge).', display: ON_OFF('Save Shiny Wrinklers') },
-    { key: 'autoSL', hint: 'Auto-harvest sugar lumps (optionally with Rigidel).', display: ['Autoharvest SL OFF', 'Autoharvest SL ON', 'Autoharvest SL ON + AUTO RIGIDEL'] },
-    { key: 'dragonsCurve', hint: "Swap in Dragon's Curve (and Reality Bending) for lump harvest.", display: ["Auto-Dragon's Curve OFF", "Auto-Dragon's Curve ON", "Auto-Dragon's Curve ON + REALITY BENDING"] },
-    { key: 'sugarBakingGuard', hint: "Don't spend lumps below 101 (keep Sugar Baking bonus).", display: ON_OFF('Sugar Baking Guard') },
-    { key: 'autoGS', hint: 'Turn on the Golden Switch during click buffs when the boost is worth its 1-hour cost; turns it back off afterwards (only if it turned it on).', display: ON_OFF('Auto-Golden Switch') },
-    { key: 'autoGodzamok', hint: 'Sell and rebuy mines/factories for Godzamok during click buffs, only when the extra clicking is worth more than the rebuy cost.', display: ON_OFF('Auto-Godzamok') },
-    { key: 'autoBank', hint: 'Auto-upgrade bank office.', display: ON_OFF('Auto-Banking') },
-    { key: 'autoBroker', hint: 'Auto-hire stock brokers.', display: ON_OFF('Auto-Broker') },
-    { key: 'autoLoan', hint: 'Auto-take loans during click frenzies.', display: ['Auto-Loans OFF', 'Take loans 1 and 2', 'Take all 3 loans'],
-      extra: num('minLoanMult', ' minimum Frenzy', 'Loans!', 'What CpS multiplier should trigger taking loans? (e.g. "777" for a Frenzy + Click Frenzy combo)', 0, 1e300, 'x') },
+    { key: 'comboAscend', hint: 'Allow auto-ascending during a Frenzy (at least the Smart Grimoire minimum below). Off: it waits for the boost to end.', display: ON_OFF('Ascend During Combos') },
+    { head: 'Wrinklers & sugar lumps:' },
+    { key: 'autoWrinkler', hint: 'Pop wrinklers.', display: ['Autopop Wrinklers OFF', 'Autopop Wrinklers EFFICIENTLY', 'Autopop Wrinklers INSTANTLY'] },
+    { key: 'shinyPop', hint: 'Never pop shiny wrinklers (⚠️ keeps the Elder Pledge off).', display: ON_OFF('Save Shiny Wrinklers') },
+    { key: 'autoSL', hint: 'Harvest ripe sugar lumps (Rigidel: slot him for the harvest).', display: ['Lump Harvest OFF', 'Lump Harvest ON', 'Lump Harvest ON + RIGIDEL'] },
+    { key: 'dragonsCurve', hint: "Swap in Dragon's Curve (and Reality Bending) for the harvest.", display: ["Dragon's Curve Swap OFF", "Dragon's Curve Swap ON", "Dragon's Curve Swap + REALITY BENDING"] },
+    { hint: 'Lumps nothing will spend (building levels, Sugar Frenzy, achievement goals). Sugar baking counts up to 100 unspent lumps.',
+      extras: [num('lumpReserve', ' sugar lumps kept', 'Sugar lumps!', 'How many sugar lumps should always be kept? (Sugar baking gives its bonus for up to 100.)', 0, 100000)] },
+    { head: 'Combos & bank office:' },
+    { key: 'autoGS', hint: 'Turn the Golden Switch on during click buffs when the boost is worth its 1-hour cost, and back off afterwards.', display: ON_OFF('Auto Golden Switch') },
+    { key: 'autoGodzamok', hint: 'Sell and rebuy mines/factories for Godzamok during click buffs, when the extra clicking pays for the rebuy.', display: ON_OFF('Auto Godzamok') },
+    { key: 'autoBank', hint: 'Upgrade the bank office.', display: ON_OFF('Auto Office') },
+    { key: 'autoBroker', hint: 'Hire stockbrokers.', display: ON_OFF('Auto Broker') },
+    { key: 'autoLoan', hint: 'Take loans during big boosts.', display: ['Auto Loans OFF', 'Take loans 1 and 2', 'Take all 3 loans'],
+      extra: num('minLoanMult', ' minimum boost', 'Loans!', 'What CpS multiplier should trigger taking loans? (e.g. "777" for a Frenzy + Click Frenzy combo)', 0, 1e300, 'x') },
     { head: 'Pantheon:' },
-    { key: 'autoWorshipToggle', hint: 'Auto-pick the best gods: simulates every lineup and slots the one with the most CpS (Godzamok stays in diamond with Auto-Godzamok).', display: ON_OFF('Auto Pantheon') },
+    { key: 'autoWorshipToggle', hint: 'Simulate every lineup and slot the one with the most CpS (Godzamok stays in diamond with Auto Godzamok).', display: ON_OFF('Auto Pantheon') },
     { head: 'Grimoire:' },
-    { key: 'towerLimit', hint: 'Stop buying Wizard Towers at set max mana.', display: ON_OFF('Wizard Tower Cap'), extra: num('manaMax', ' max Mana', 'Mana Cap!', 'Set the maximum mana wizard towers should reach (37 recommended).', 0, 1000) },
-    { key: 'autoCasting', hint: 'Smart Grimoire: reads the upcoming Hand of Fate results. Good results are cast as soon as the CpS multiplier reaches the minimum Frenzy setting; bad ones are skipped; two good ones in a row are double-cast.', display: ON_OFF('Smart Grimoire'),
-      extra: num('minCpSMult', ' minimum Frenzy', 'Smart Grimoire!', FRENZY_PROMPT, 0, 1e300, 'x') },
-    { key: 'comboChain', hint: 'While a boost stack is running, skip a bad result to reach a good one right behind it, and use Stretch Time (only when it will succeed) to lengthen Frenzy + click-buff stacks.', display: ON_OFF('Combo Chaining') },
-    { key: 'autoSugarFrenzy', hint: 'Buy Sugar Frenzy (once per ascension, costs 1 lump) the first time your CpS multiplier reaches X.', display: ON_OFF('Auto Sugar Frenzy'),
-      extra: num('minASFMult', ' minimum Frenzy', 'Sugar Frenzy!', 'What CpS multiplier should trigger buying Sugar Frenzy?', 0, 1e300, 'x') },
+    { key: 'towerLimit', hint: 'Stop buying Wizard Towers at this max mana (81 lets you double-cast).', display: ON_OFF('Wizard Tower Cap'), extra: num('manaMax', ' max mana', 'Mana Cap!', 'Set the maximum mana Wizard Towers should reach (81 allows double casts).', 0, 1000) },
+    { key: 'autoCasting', hint: 'Reads the upcoming Hand of Fate results: casts good ones once your CpS multiplier reaches the minimum, skips bad ones, double-casts two good ones in a row. The minimum also gates combo ascending.', display: ON_OFF('Smart Grimoire'),
+      extra: num('minCpSMult', ' minimum boost', 'Smart Grimoire!', FRENZY_PROMPT, 0, 1e300, 'x') },
+    { key: 'comboChain', hint: 'During a boost stack, skip a bad result to reach a good one right behind it, and use Stretch Time (when it will succeed) to lengthen the stack.', display: ON_OFF('Combo Chaining') },
+    { key: 'autoSugarFrenzy', hint: 'Buy Sugar Frenzy (once per ascension, 1 lump) the first time your CpS multiplier reaches X.', display: ON_OFF('Auto Sugar Frenzy'),
+      extra: num('minASFMult', ' minimum boost', 'Sugar Frenzy!', 'What CpS multiplier should trigger buying Sugar Frenzy?', 0, 1e300, 'x') },
     { head: 'Dragon:' },
-    { key: 'autoDragon', hint: 'Auto-upgrade dragon.', display: ON_OFF('Dragon Upgrading') },
-    { key: 'petDragon', hint: 'Auto-pet dragon for drops.', display: ON_OFF('Dragon Petting') },
-    { key: 'autoDragonToggle', hint: 'Auto-set dragon auras.', display: ON_OFF('Dragon Auras') },
-    { note: "Set desired auras. Can't set same aura twice." },
-    { key: 'autoDragonAura0', hint: 'Auto-set FIRST dragon aura.', display: AURAS },
-    { key: 'autoDragonAura1', hint: 'Auto-set SECOND dragon aura.', display: AURAS },
-    { key: 'autoDragonOrbs', hint: 'Auto-sell Yous for GC if Dragon Orbs aura is set and Godzamok is not.', display: ON_OFF('Auto-Dragon Orbs') },
-    { key: 'orbLimit', hint: 'Limit Yous for Dragon Orbs combos.', display: ON_OFF('You Limit'), extra: num('orbMax', ' Yous', 'You Cap!', 'How many Yous should autobuy stop at?', 0, 100000) },
-    { head: 'Season:' },
-    { key: 'defaultSeasonToggle', hint: 'Auto-switch to selected season if no upgrades needed.', display: ON_OFF('Autobuy Seasons') },
-    { key: 'defaultSeason', hint: 'Select default season.', display: ['Default Season OFF', 'Default Season BUSINESS DAY', 'Default Season CHRISTMAS', 'Default Season EASTER', 'Default Season HALLOWEEN', "Default Season VALENTINE'S DAY"] },
-    { key: 'freeSeason', hint: 'Stay in free base season if no upgrades needed.', display: ['Free Season OFF', 'Free Season for CHRISTMAS and BUSINESS DAY', 'Free Season for ALL'] },
-    { key: 'autoEaster', hint: 'Switch to Easter during Cookie Storm if eggs missing.', display: ON_OFF('Auto-Easter Switch') },
-    { key: 'autoHalloween', hint: 'Switch to Halloween if wrinklers present and cookies missing.', display: ON_OFF('Auto-Halloween Switch') },
-    { head: 'Bank: (delays autobuy until bank is full)' },
-    { key: 'holdManBank', hint: 'Manual minimum bank (minutes of base CpS)', display: ON_OFF('Manual Bank'), extra: num('manBankMins', ' Minutes', 'Manual Bank!', 'How many minutes of base CpS should be kept in the bank?', 0, 1e9) },
-    { key: 'holdSEBank', hint: 'Keep bank for Spontaneous Edifice.', display: ON_OFF('SE Bank') },
-    { key: 'setHarvestBankPlant', hint: 'Keep bank for harvesting selected plant.', display: ['Harvesting Bank OFF', 'Harvesting Bank BAKEBERRY', 'Harvesting Bank CHOCOROOT', 'Harvesting Bank WHITE CHOCOROOT', 'Harvesting Bank QUEENBEET', 'Harvesting Bank DUKETATER', 'Harvesting Bank CRUMBSPORE', 'Harvesting Bank DOUGHSHROOM'] },
-    { key: 'setHarvestBankType', hint: 'Increase bank for plant harvest during CpS buffs.', display: ['Harvesting during NO CpS MULTIPLIER', 'Harvesting during FRENZY', 'Harvesting during BUILDING SPECIAL', 'Harvesting during FRENZY + BUILDING SPECIAL'],
-      extra: num('maxSpecials', ' Building specials', 'Harvest Bank!', 'How many building specials should the bank plan for? (1-20)', 1, 20) },
+    { key: 'autoDragon', hint: 'Train the dragon.', display: ON_OFF('Dragon Training') },
+    { key: 'petDragon', hint: 'Pet the dragon for its drops.', display: ON_OFF('Dragon Petting') },
+    { key: 'autoDragonAura0', hint: 'First aura (No aura = leave it alone). The two auras must differ.', display: AURAS },
+    { key: 'autoDragonAura1', hint: 'Second aura.', display: AURAS },
+    { key: 'autoDragonOrbs', hint: "Sell Yous for golden cookies when Dragon Orbs is set and Godzamok isn't.", display: ON_OFF('Auto Dragon Orbs') },
+    { key: 'orbLimit', hint: 'Cap Yous for Dragon Orbs.', display: ON_OFF('You Limit'), extra: num('orbMax', ' Yous', 'You Cap!', 'How many Yous should autobuy stop at?', 0, 100000) },
+    { head: 'Seasons:' },
+    { key: 'defaultSeason', hint: 'Season to switch to when no season upgrades are needed.', display: ['Default Season NONE', 'Default Season BUSINESS DAY', 'Default Season CHRISTMAS', 'Default Season EASTER', 'Default Season HALLOWEEN', "Default Season VALENTINE'S DAY"] },
+    { key: 'freeSeason', hint: 'Stay in a free season when no season upgrades are needed.', display: ['Free Season OFF', 'Free Season for CHRISTMAS and BUSINESS DAY', 'Free Season for ALL'] },
+    { key: 'autoEaster', hint: 'Switch to Easter during a Cookie Storm if eggs are missing.', display: ON_OFF('Auto Easter Switch') },
+    { key: 'autoHalloween', hint: 'Switch to Halloween when wrinklers are up and cookies are missing.', display: ON_OFF('Auto Halloween Switch') },
+    { head: 'Bank (autobuy waits until it is full):' },
+    { hint: 'Manual bank: minutes of base CpS to keep (0 = off).', extras: [num('manBankMins', ' minutes kept', 'Manual Bank!', 'How many minutes of base CpS should be kept in the bank? (0 turns this off)', 0, 1e9)] },
+    { key: 'holdSEBank', hint: 'Keep a bank for Spontaneous Edifice.', display: ON_OFF('SE Bank') },
+    { key: 'setHarvestBankPlant', hint: 'Keep a bank for harvesting this plant.', display: ['Harvest Bank OFF', 'Harvest Bank BAKEBERRY', 'Harvest Bank CHOCOROOT', 'Harvest Bank WHITE CHOCOROOT', 'Harvest Bank QUEENBEET', 'Harvest Bank DUKETATER', 'Harvest Bank CRUMBSPORE', 'Harvest Bank DOUGHSHROOM'] },
+    { key: 'setHarvestBankType', hint: 'Size the harvest bank for these buffs.', display: ['No buff', 'Frenzy', 'Building special', 'Frenzy + building special'],
+      extra: num('maxSpecials', ' building specials', 'Harvest Bank!', 'How many building specials should the bank plan for? (1-20)', 1, 20) },
+    { head: 'Achievement goals (Sleepy extra):', extraHead: true },
+    { key: 'achMode', hint: 'Fastest first: works on every missing achievement it can, quickest first, settling conflicts (ascend soon vs. stay in one run) for the quickest goal. My list: only the goals you tick below.', display: ['Achievement Goals OFF', 'Goals FASTEST FIRST', 'Goals MY LIST'] },
+    { key: 'achRisky', hint: 'Let Fastest first use goals with a cost: Hand-picked (50% to lose a lump), Seedless to nay (resets your seeds), Neverclick/Hardcore (a Born again run). Ticking one yourself always counts.', display: ON_OFF('Risky Goals') },
+    { achPicker: true },
     { head: 'Stock market trader (Sleepy extra):', extraHead: true },
-    { key: 'autoTrade', hint: "Simulates each stock's future with the game's own market rules; buys when the expected profit is high and sells when the price beats what waiting is expected to bring.", display: ON_OFF('Auto-Trader') },
+    { key: 'autoTrade', hint: "Simulates each stock's future with the game's own market rules; buys when the expected profit is high and sells when the price beats what waiting is expected to bring.", display: ON_OFF('Auto Trader') },
     { key: 'tradeUseTrend', hint: "Use the market's hidden price trend (peeks at game data).", display: ON_OFF('Hidden Trend') },
-    { extras: [num('tradeMinProfit', '% min expected profit', 'Auto-Trader!', 'Only buy a stock when its expected profit (after the broker fee) is at least this %.', 1, 1000),
-      num('tradeSpendPct', '% of spare cookies per tick', 'Auto-Trader!', 'Spend at most this % of your spare cookies each market tick. Cookies saved for the next purchase are only used when the stock is expected to grow faster than that purchase pays back.', 1, 100)] },
+    { extras: [num('tradeMinProfit', '% min expected profit', 'Auto Trader!', 'Only buy a stock when its expected profit (after the broker fee) is at least this %.', 1, 1000),
+      num('tradeSpendPct', '% of spare cookies per tick', 'Auto Trader!', 'Spend at most this % of your spare cookies each market tick. Cookies saved for the next purchase are only used when the stock is expected to grow faster than that purchase pays back.', 1, 100)] },
     { head: 'Garden planter (Sleepy extra):', extraHead: true },
-    { key: 'autoGarden', hint: 'Plant, weed and harvest the garden automatically.', display: ON_OFF('Auto-Planter') },
-    { key: 'gardenMode', hint: 'What the planter works on.', display: ['Planter UNLOCK NEW SEEDS', 'Planter FARM ONE SEED'] },
+    { key: 'autoGarden', hint: 'Plant, weed, harvest payout plants when mature, and switch soil automatically.', display: ON_OFF('Auto Planter') },
+    { key: 'gardenMode', hint: 'What the planter works on (an achievement goal can take over).', display: ['Planter UNLOCK NEW SEEDS', 'Planter FARM ONE SEED'] },
     { key: 'gardenSeed', hint: 'Seed to farm (farm mode, or once every seed is unlocked). Auto picks the seed and soil worth the most cookies per second right now.', seeds: true },
-    { key: 'gardenHarvestMature', hint: 'Harvest payout plants (Bakeberry, Chocoroot, Queenbeet, Duketater...) as soon as they mature. Passive plants are left to live out their life.', display: ON_OFF('Harvest Mature') },
-    { key: 'gardenAutoSoil', hint: 'Switch soil automatically: Fertilizer while plants grow, Wood chips once the parents are mature; when farming, whichever soil pays best.', display: ON_OFF('Auto Soil') },
-    { head: 'Other:' },
-    { key: 'FCshortcuts', hint: 'Enable keyboard shortcuts (a: autobuy, b: building spread, c: autoclick GC, e: export save, r: ascend, s: save, w: wrinklers).', display: ON_OFF('Shortcuts') },
-    { key: 'simulatedGCPercent', hint: 'Assume % of GCs clicked for efficiency (100% recommended).', display: ['GC clicked 0%', 'GC clicked 100%'] },
-    { head: 'Display:' },
-    { key: 'showMissedCookies', hint: 'Show missed golden cookies in info panel.', display: ON_OFF('Show Missed GCs') },
-    { key: 'numberDisplay', hint: 'Change number formatting style.', display: ['Number Display RAW', 'Number Display FULL (million, billion)', 'Number Display INITIALS (M, B)', 'Number Display SI PREFIXES (M, G, T)', 'Number Display SCIENTIFIC (6.3e12)'] },
-    { key: 'fancyui', hint: 'Infobox style (text, wheel, or both).', display: ['Infobox OFF', 'Infobox TEXT ONLY', 'Infobox WHEEL ONLY', 'Infobox WHEEL & TEXT'] },
-    { key: 'logging', hint: 'Log actions to console.', display: ON_OFF('Logging') },
-    { key: 'purchaseLog', hint: 'Log all auto-purchases.', display: ON_OFF('Purchase Log') },
-    { head: 'Warning: These options may slow the game.' },
-    { key: 'fpsModifier', hint: 'Set game frame rate (default 30).', display: FPS_VALUES.map((v) => 'Frame Rate ' + v + ' fps') },
-    { key: 'trackStats', hint: 'Track CpS/HC for graphs (may slow game).', display: ['Tracking OFF', 'Tracking EVERY 60s', 'Tracking EVERY 30m', 'Tracking EVERY 1h', 'Tracking EVERY 24h', 'Tracking ON UPGRADES', 'Tracking SMART TIMING'],
+    { head: 'Display & other:' },
+    { key: 'FCshortcuts', hint: 'Keyboard shortcuts (a: autobuy, b: building spread, c: autoclick GC, e: export save, r: ascend, s: save, w: wrinklers).', display: ON_OFF('Shortcuts') },
+    { key: 'showMissedCookies', hint: 'Show missed golden cookies in the infobox.', display: ON_OFF('Show Missed GCs') },
+    { key: 'numberDisplay', hint: 'Number format.', display: ['Numbers RAW', 'Numbers FULL (million, billion)', 'Numbers INITIALS (M, B)', 'Numbers SI (M, G, T)', 'Numbers SCIENTIFIC (6.3e12)'] },
+    { key: 'fancyui', hint: 'Infobox style.', display: ['Infobox OFF', 'Infobox TEXT', 'Infobox WHEEL', 'Infobox WHEEL & TEXT'] },
+    { key: 'logging', hint: 'What to write to the browser console.', display: ['Console Log OFF', 'Console Log ACTIONS', 'Console Log ACTIONS + EVERY PURCHASE'] },
+    { head: 'Warning: these may slow the game.' },
+    { key: 'fpsModifier', hint: 'Game frame rate (default 30).', display: FPS_VALUES.map((v) => 'Frame Rate ' + v + ' fps') },
+    { key: 'trackStats', hint: 'Track CpS/HC for graphs.', display: ['Tracking OFF', 'Tracking EVERY 60s', 'Tracking EVERY 30m', 'Tracking EVERY 1h', 'Tracking EVERY 24h', 'Tracking ON UPGRADES', 'Tracking SMART TIMING'],
       action: { label: () => (showGraphs ? 'Hide Stat Graphs' : 'View Stat Graphs'), run: () => { showGraphs = !showGraphs; buildMenu(); } } },
-    { key: 'recommendedSettings', hint: "Set all options to Frozen Cookies' recommended values (trader and planter settings are kept).", recommended: true }
+    { key: 'recommendedSettings', hint: 'Set every option to the recommended values (trader, planter and achievement goals are kept).', recommended: true }
   ];
 
   // ---- the game-style number prompt (same as FC's userInputPrompt)
@@ -2366,7 +2625,8 @@
       if (c.head) { sub.append(el('div', { class: 'sc-section-heading' + (c.extraHead ? ' extra' : '') }, c.head)); continue; }
       if (c.note) { sub.append(el('div', { class: 'sc-note' }, c.note)); continue; }
       const listing = el('div', { class: 'listing' });
-      if (c.extras) { c.extras.forEach((x) => { listing.append(extraButton(x), el('br')); }); sub.append(listing); continue; }
+      if (c.achPicker) { sub.append(achPicker()); continue; }
+      if (c.extras) { if (c.hint) listing.append(el('label', { class: 'sc-hint-label' }, c.hint)); c.extras.forEach((x) => { listing.append(extraButton(x), el('br')); }); sub.append(listing); continue; }
       listing.append(el('label', { class: 'sc-hint-label' }, c.hint));
       if (c.recommended) {
         const b = el('a', { class: 'option' }, 'Apply Recommended Settings');
@@ -2384,6 +2644,33 @@
       sub.append(listing);
     }
     return sub;
+  }
+  // ---- achievement goal picker: every missing achievement, quickest first, with what it takes
+  let achPickerOpen = false;
+  const estText = (e) => (e === null ? 'unknown' : e === Infinity ? 'not possible yet' : e < 1 ? 'ready' : '~' + timeDisplay(e));
+  function achPicker() {
+    const box = el('div', { class: 'listing' });
+    if (!achInfo.goals.length || !achPickerOpen) achRefreshList();
+    const goals = achInfo.goals, mine = D.achList || [], working = new Set(achInfo.top.map((g) => g.name));
+    box.append(el('label', { class: 'sc-hint-label' }, goals.length + ' missing achievements, quickest first. ' +
+      (S.achMode === 2 ? 'Tick the ones to work on.' : 'Ticks are used in MY LIST mode.') + ' ▶ = being worked on now; (you) = needs you; (passive) = comes with normal play.'));
+    const t = el('a', { class: 'option sc-extra' }, achPickerOpen ? 'Hide goal list' : 'Show goal list (' + mine.length + ' ticked)');
+    t.onclick = () => { PlaySound('snd/tick.mp3'); achPickerOpen = !achPickerOpen; buildMenu(); };
+    box.append(t);
+    if (!achPickerOpen) return box;
+    const list = el('div', { class: 'sc-group-vertical' });
+    for (const g of goals) {
+      const tag = g.manual ? ' (you)' : g.passive ? ' (passive)' : g.risky ? ' ⚠️' : '';
+      const b = el('a', { class: 'sc-choice' + (mine.includes(g.name) ? ' selected' : '') });
+      b.append(el('b', null, (working.has(g.name) ? '▶ ' : '') + g.name + tag), el('span', null, ' — ' + estText(g.est)), el('br'), el('small', { style: 'color:#aaa' }, g.how));
+      if (g.manual || g.passive) b.style.cursor = 'default';
+      else b.onclick = () => { PlaySound('snd/tick.mp3'); achToggle(g.name); };
+      list.append(b);
+    }
+    if (!goals.length) list.append(el('div', { class: 'sc-note' }, 'Nothing missing. Well done!'));
+    box.append(list);
+    if (mine.length) { const c = el('a', { class: 'option sc-extra' }, 'Clear my list'); c.onclick = () => { D.achList = []; save(); buildMenu(); }; box.append(c); }
+    return box;
   }
   function seedOptions() {
     const out = [['auto', 'Auto (Bakeberry > Wheat)']];
@@ -2472,7 +2759,7 @@
     if (grimoire()) h += listing('Next Hand of Fate spells', [0, 1, 2, 3].map(nextSpellName).join(', '));
     if (S.autoCasting) h += listing('Smart Grimoire', esc(grimoireInfo.text));
     if (S.autoWorshipToggle) h += listing('Auto Pantheon', esc(pantheonInfo.text));
-    if (S.autoAscendToggle && S.autoAscend === 3) h += listing('Lucky 7s', esc(R.sevensText || 'waiting'));
+    if (S.autoAscend === 3) h += listing('Lucky 7s', esc(R.sevensText || 'waiting'));
     const Mk = market();
     if (S.autoTrade && Mk) {
       let held = 0, val = 0;
@@ -2482,6 +2769,12 @@
     if (S.autoGarden) h += listing('Garden Planter', esc(gardenStatus));
     h += listing('Game Seed', esc(Game.seed)) + listing('Building Spread', Game.ObjectsById.map((b) => b.amount).join('/'));
     out += subsection('Other Information', h);
+    if (S.achMode && achInfo.top.length) {
+      let a = achInfo.top.slice(0, 8).map((g) => listing(esc(g.name), esc(estText(g.est) + ' — ' + g.how))).join('');
+      if (FARM.need && R.ascendPolicy === 'soon') a += listing('Next counting ascension at', B(FARM.need) + ' cookies this run');
+      if (R.ascendPolicy === 'stay') a += listing('Auto-ascend', 'paused: a goal needs this run to keep going');
+      out += subsection('Achievement Goals', a);
+    }
 
     if (showGraphs) out += subsection('Stat Graphs', '<div class="listing"><canvas id="scGraph" width="560" height="260"></canvas></div>' +
       '<div class="listing"><a class="option" onclick="SleepyCookies._recordStats()">Record Stats Now</a> <a class="option" onclick="SleepyCookies._clearStats()">Clear Stats</a></div>');
@@ -2765,6 +3058,7 @@
   job('dragonOrbs', autoDragonOrbsAction);
   job('otherUpgrades', buyOtherUpgrades);
   job('trader', traderAction);
+  job('achievements', achievementAction);
   job('garden', gardenAction);
   job('stats', statsAction);
   job('ui', statusUiTick);
@@ -2775,6 +3069,7 @@
   function tick() {
     tickN++;
     const busy = Game.OnAscend || Game.AscendTimer;
+    if (tickN === 1) run.achievements();               // goals first: a Born again run must not click before they're known
     run.main();
     run.clickRate();
     if (!busy) {
@@ -2786,6 +3081,7 @@
         run.otherUpgrades(); run.garden(); run.spellTooltip();
       }
     }
+    if (tickN % 5 === 0) run.achievements();           // also runs on the Ascend screen
     if (tickN % 10 === 0) { run.stats(); run.ui(); }
     if (tickN % 3 === 0) run.infobox();
     if (tickN % 300 === 0) run.save();
@@ -2825,10 +3121,11 @@
     _evaluateFarm: () => { const M = garden(); return M ? evaluateFarm(M, gardenBounds(M)) : []; },
     resetSettings: () => { localStorage.removeItem(STORE_KEY); console.log('[Sleepy Cookies] Settings reset. Paste the script again to reload.'); },
     _confirmNumber: () => confirmNumber(),
+    _achToggle: (name) => achToggle(name),
     _applyRecommended: () => applyRecommended(),
     _recordStats: () => { saveStats(); refreshMenuInfo(); },
     _clearStats: () => { D.trackedStats = []; save(); refreshMenuInfo(); },
-    _internal: { combo2, pantheonInfo, grimoireInfo, tradeInfo, simulateGood, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
+    _internal: { achInfo, FARM, combo2, pantheonInfo, grimoireInfo, tradeInfo, simulateGood, autoPantheonAction, W, R, setDragonAura, swapIn, bestBank, delayAmount, cookieValue }
   };
   start();
 })();

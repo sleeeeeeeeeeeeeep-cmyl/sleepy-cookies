@@ -81,7 +81,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
   - harvests ripe lumps
   - can slot Rigidel to harvest early
   - can swap in Dragon's Curve / Reality Bending at harvest time
-  - can keep 100 lumps for Sugar baking
+  - keeps the number of lumps you set (100 keeps the full Sugar baking bonus)
 - **Lucky 7s ascend:** Lucky digit, Lucky number and Lucky payout only appear when your prestige level contains 1, 2 and 4 sevens. In this mode the add-on ascends the moment your new prestige level would have the 7s the next one needs, buys it, and reincarnates. It skips the usual cash-in so the number doesn't change.
 - **Auto-ascend:** ascends at a set number of heavenly chips, or when your prestige would double. Before ascending it cashes in:
   - wrinklers
@@ -95,7 +95,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
 The game decides each Force the Hand of Fate result in advance, so Sleepy Cookies reads the next ones and plans each cast:
 - **Free sugar lump next:** cast immediately.
 - **Good result next** (Click Frenzy, Elder Frenzy, Building Special, Cursed Finger or Lucky):
-  - Cast the moment your CpS multiplier reaches your **minimum Frenzy** setting (default ×7, so any Frenzy works).
+  - Cast the moment your CpS multiplier reaches your **minimum boost** setting (default ×7, so any Frenzy works).
   - Only needs enough mana for the spell, not a full bar.
   - Won't stack a second Click Frenzy on top of one already running.
 - **Two good results in a row with full mana:** double-cast. It sells wizard towers so the second cast is cheap, re-checks the prediction, then buys the towers back.
@@ -136,6 +136,28 @@ Upgrades and pets the dragon (for its drops), sets your two chosen auras, and ca
   - It harvests payout plants (Bakeberry, Chocoroot, Queenbeet, Duketater) when they're mature and leaves passive ones like Baker's wheat to live out their life.
 - **Soil:** switches automatically. In unlock mode it grows parents on Fertilizer, switches to Wood chips (3× mutations) once they're mature, and goes back to Fertilizer while a new plant grows. In farm mode it uses whichever soil pays best.
 - Clears weeds and unwanted mutations.
+
+### Achievement goals (Sleepy extra)
+The menu lists every achievement you're missing, quickest first, with an estimate of how long each will take and what it needs. Pick how the add-on works on them:
+- **Fastest first:** works on every missing achievement it can automate, quickest first.
+- **My list:** works only on the achievements you tick in the list.
+- **Off.**
+
+When two goals clash, the quickest one wins. For example, Reincarnation wants short runs and Liquid assets wants one long run. Goals marked "(you)" need you (Wrinkler poker, Baby it's old outside), and "(passive)" ones come with normal play (Black cat's paw, Year's worth of cavities).
+
+What it does for each goal:
+- **Reincarnation:** from your next Ascend screen (30 seconds to spend chips the first time), reincarnates, then ascends again as soon as the ascension would count, until 100. The game only counts an ascension that raises your prestige level, so at a very high prestige level each one still needs a big run.
+- **Debt evasion:** takes Loan 1 right before ascending (needs office level 2 in that run).
+- **A wizard is you:** casts the cheapest spell when the mana bar is full and no good Force the Hand of Fate result is waiting.
+- **Reindeer sleigher:** switches to Christmas and stays there.
+- **Building level achievements (level 10) and Pyramid scheme (Cursor 12):** spends sugar lumps above your "Sugar lumps to keep" on the quickest one.
+- **Buy buy buy, Rookie numbers, No nobility in poverty:** stock purchases from spare cookies, never the bank.
+- **Keeper of the conservatory / Green, aching thumb:** sets the garden planter to unlock seeds, or to grow and harvest the fastest-maturing seed.
+- **Pyramid scheme, Liquid assets, And a little extra:** hold auto-ascend so the run keeps going.
+- **Risky goals** (Fastest first only uses them with **Risky Goals** on; ticking one yourself counts as a yes):
+  - **Hand-picked:** harvests a mature, unripe lump. That's a 50% chance of a lump; otherwise you lose it.
+  - **Seedless to nay:** sacrifices the garden once all 34 seeds are unlocked. You get 10 lumps and your seeds reset.
+  - **Neverclick and Hardcore:** picks Born again on your next Ascend screen, clicks only 15 times and buys no upgrades until both are yours, then ascends back to a normal run.
 
 ### Info and display
 - An info section with everything Frozen Cookies shows: next purchase, bank, golden cookie timers, heavenly chip rate, frenzy times and stat graphs.

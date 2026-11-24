@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Sleepy Cookies
 // @namespace    https://github.com/sleeeeeeeeeeeeeep-cmyl/sleepy-cookies
-// @version      2.5.0
+// @version      2.7.0
 // @description  Loads the Sleepy Cookies automation add-on in the web version of Cookie Clicker.
 // @author       sleeeeeeeeeeeeeep-cmyl
 // @license      GPL-3.0-or-later
