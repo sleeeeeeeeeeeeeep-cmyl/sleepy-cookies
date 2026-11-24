@@ -66,6 +66,7 @@ To try it out quickly, scroll to the bottom of the menu and click **Apply recomm
 ### Buying
 - Buys whichever building or upgrade gives the most CpS for its price, using Frozen Cookies' efficiency formula. That formula also counts golden cookies, clicking, wrinklers and reindeer.
 - While it saves up for that pick, it also buys cheaper upgrades that pay for themselves before the pick would be affordable anyway, so you get there sooner with more CpS. It never dips into the bank.
+- Right after ascending, when everything costs almost nothing next to your cookies, it buys every upgrade and building under 0.1% of your spare cookies in one go, instead of one at a time.
 - Every purchase keeps the bank: buying 10 or 100 at a time only buys as many as fit above it, and reward cookies (which need every building at a set number) wait until the whole set fits.
 - Works out what's needed to unlock an upgrade (buildings, other upgrades, Santa levels) and buys towards it.
 - **Cookie bank:** saves a bank of cookies so Lucky golden cookies pay out in full. You can also set:

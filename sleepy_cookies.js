@@ -26,7 +26,7 @@
     try { window.SleepyCookies.stop(true); } catch (e) { /* old copy already gone */ }
   }
 
-  const VERSION = '2.7.3';
+  const VERSION = '2.7.4';
   const TESTED_GAME_VERSION = 2.058;
   const STORE_KEY = 'SleepyCookies.v2';
   const noop = function () {};
@@ -1139,6 +1139,35 @@
     for (const c of pick) if (c.purchase.buy(1)) n++;
     if (!n) return false;
     logEvent('Autobuy', 'Bought ' + n + ' upgrade' + (n > 1 ? 's' : '') + ' while saving for ' + rec.name + ' (they pay for themselves before it is affordable)');
+    invalidate();
+    return true;
+  }
+  // Right after ascending with a big prestige level, everything in the store costs almost nothing next to
+  // your bank, but ranking and buying one item at a time (re-simulating after each) can only manage a few
+  // purchases a second. Buy everything that costs under 0.1% of the spare cookies in one go first.
+  const SWEEP_SKIP = new Set(['Chocolate egg', 'Elder Pledge', 'Elder Covenant', 'Revoke Elder Covenant']);
+  function sweepCheap() {
+    if (!S.autoBuy || Game.OnAscend || Game.AscendTimer || Game.cookiesPs <= 0) return false;
+    const bank = delayAmount();
+    const spare = Game.cookies - bank;
+    if (!(spare > 0)) return false;
+    const each = spare * 0.001;
+    let budget = spare * 0.02, n = 0;
+    for (const r of recommendationList()) {
+      if (budget <= 0) break;
+      if (r.type === 'upgrade') {
+        const u = r.purchase, price = u.getPrice();
+        if (price > each || !u.unlocked || u.bought || u.pool === 'toggle' || u.pool === 'tech' || SWEEP_SKIP.has(u.name) || NO_BUYALL.has(u.name)) continue;
+        if (u.buy(1)) { n++; budget -= price; }
+      } else if (r.type === 'building') {
+        const b = r.purchase;
+        let lo = 0, hi = b.name === 'Wizard tower' && S.towerLimit ? 1 : clampBulk(b, 1000);   // towers: one at a time near the mana cap
+        while (lo < hi) { const mid = Math.ceil((lo + hi) / 2); if (b.getSumPrice(mid) <= Math.min(each * 10, budget)) lo = mid; else hi = mid - 1; }
+        if (lo > 0) { const cost = b.getSumPrice(lo); const got = safeBuy(b, lo); if (got > 0) { n += got; budget -= cost; } }
+      }
+    }
+    if (!n) return false;
+    logEvent('Autobuy', 'Bought ' + n + ' cheap upgrades/buildings at once (each under 0.1% of spare cookies)');
     invalidate();
     return true;
   }
@@ -3206,6 +3235,7 @@
     lumpAction();
     if (S.autoWrinkler === 2 || (S.autoWrinkler === 1 && tickN % 5 === 0)) wrinklerAction();
     if (S.autoBuy) rewardCookieAction();
+    if (S.autoBuy && sweepCheap()) updateCaches(true);
     const t0 = performance.now();
     for (let i = 0; i < 200 && autoBuyStep(); i++) {
       updateCaches(true);
